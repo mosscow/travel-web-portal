@@ -1,0 +1,242 @@
+/* CHAT STYLES */
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--color-background-secondary);
+}
+
+.chat-message {
+  display: flex;
+  gap: 10px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.message-avatar.user {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+}
+
+.message-avatar.bot {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.message-content {
+  flex: 1;
+}
+
+.message-text {
+  background: var(--color-background-primary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.message-user .message-text {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+}
+
+.message-bot .message-text {
+  background: #F1F8E9;
+  color: #33691E;
+}
+
+.message-timestamp {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  padding: 0 12px;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 12px;
+}
+
+.btn-action {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+}
+
+.chat-input-area {
+  padding: 1.5rem;
+  background: var(--color-background-primary);
+  border-top: 0.5px solid var(--color-border-tertiary);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--color-border-info);
+}
+
+.btn-send {
+  padding: 10px 16px;
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-send:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-toolbar {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 1rem;
+}
+
+.btn-toolbar {
+  padding: 6px 10px;
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-toolbar:hover {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+}
+
+.info-banner {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+}
+
+.empty-state-text {
+  font-size: 14px;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.empty-state-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  max-width: 300px;
+}
+
+.suggestion-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.chip {
+  padding: 6px 12px;
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  border-color: var(--color-border-info);
+}

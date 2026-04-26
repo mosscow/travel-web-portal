@@ -1,0 +1,210 @@
+/* GLOBAL STYLES */
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f5f5f5;
+  --color-background-tertiary: #eeeeee;
+  --color-background-info: #1976D2;
+  --color-text-primary: #212121;
+  --color-text-secondary: #666666;
+  --color-text-info: #ffffff;
+  --color-border-primary: #e0e0e0;
+  --color-border-secondary: #d0d0d0;
+  --color-border-tertiary: #e0e0e0;
+  --color-border-info: #1976D2;
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 12px;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+.planner-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--color-background-primary);
+  border-radius: var(--border-radius-lg);
+  border: 0.5px solid var(--color-border-tertiary);
+  overflow: hidden;
+}
+
+/* HEADER */
+.global-header {
+  background: var(--color-background-primary);
+  padding: 1.5rem;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+
+.trip-title {
+  font-size: 28px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  color: var(--color-text-primary);
+}
+
+.trip-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.header-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  overflow-x: auto;
+}
+
+.header-tab-btn {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.header-tab-btn.active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-border-info);
+  background: var(--color-background-secondary);
+}
+
+.header-tab-btn:hover {
+  background: var(--color-background-secondary);
+}
+
+/* PANELS */
+.tab-panel {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* BUTTONS */
+.btn-add {
+  padding: 8px 12px;
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-add:hover {
+  opacity: 0.9;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 0.5px solid var(--color-border-secondary);
+  background: var(--color-background-primary);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-small:hover {
+  background: var(--color-background-secondary);
+}
+
+/* INPUTS */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  transition: border 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-border-info);
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+}
+
+/* MESSAGES */
+.success-msg {
+  background: #c8e6c9;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.error-msg {
+  background: #ffcdd2;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-secondary);
+}

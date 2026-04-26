@@ -1,0 +1,408 @@
+/* TRIP PLANNER STYLES */
+
+.trip-summary-section {
+  padding: 1.5rem;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+}
+
+.summary-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 1rem 0;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.summary-card {
+  background: var(--color-background-primary);
+  padding: 1rem;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.summary-card:hover {
+  border-color: var(--color-border-info);
+  background: #f8fbff;
+}
+
+.summary-card.active {
+  border: 2px solid #1976D2;
+  background: #1976D2;
+}
+
+.summary-number {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.summary-dest {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  padding-right: 35px;
+}
+
+.summary-days {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.summary-highlights {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.summary-card.active .summary-dest,
+.summary-card.active .summary-days,
+.summary-card.active .summary-highlights {
+  color: white;
+}
+
+/* SEGMENT INFO */
+.segment-info {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 1.5rem;
+  background: var(--color-background-secondary);
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+
+.info-stat {
+  background: var(--color-background-primary);
+  padding: 12px;
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-tertiary);
+  font-size: 12px;
+}
+
+.info-label {
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 6px;
+  color: var(--color-text-primary);
+}
+
+/* SEGMENT TABS */
+.segment-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+  overflow-x: auto;
+}
+
+.segment-tab-btn {
+  padding: 12px 16px;
+  border: none;
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.segment-tab-btn:hover {
+  background: var(--color-background-primary);
+}
+
+.segment-tab-btn.active {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.segment-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-border-info);
+}
+
+/* SEGMENT CONTENT */
+.segment-content {
+  padding: 1.5rem;
+  display: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.segment-content.active {
+  display: block;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 1.5rem 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-primary);
+}
+
+.section-title:first-child {
+  margin-top: 0;
+}
+
+/* ACTIVITY CARD */
+.activity-card {
+  background: var(--color-background-secondary);
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 1rem;
+  border: 0.5px solid var(--color-border-tertiary);
+}
+
+.activity-time-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.activity-time-input {
+  width: 80px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.time-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.activity-field {
+  margin-bottom: 1rem;
+}
+
+.field-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.activity-title-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+.activity-notes-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  min-height: 60px;
+}
+
+.activity-search {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.btn-map-link {
+  padding: 6px 10px;
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-map-link:hover {
+  opacity: 0.9;
+}
+
+/* MAP TAB */
+.map-container {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1rem;
+  padding: 1.5rem;
+  min-height: 600px;
+  flex: 1;
+}
+
+.map-area {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-placeholder {
+  flex: 1;
+  background: linear-gradient(135deg, #e8eef7 0%, #f0f4f9 100%);
+  border: 1px dashed var(--color-border-tertiary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  text-align: center;
+  padding: 2rem;
+}
+
+.map-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+}
+
+.map-sidebar {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.sidebar-section {
+  margin-bottom: 1.5rem;
+}
+
+.sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+
+.map-item {
+  background: var(--color-background-primary);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  border: 0.5px solid var(--color-border-tertiary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.map-item:hover {
+  background: #f8fbff;
+  border-color: var(--color-border-info);
+}
+
+.map-item.active {
+  background: var(--color-background-info);
+  border-color: var(--color-border-info);
+}
+
+.map-item-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-info);
+}
+
+.map-item-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-top: 4px;
+}
+
+.map-item-subtitle {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.map-item-search {
+  padding: 4px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 3px;
+  font-size: 11px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.map-item-badge {
+  display: inline-block;
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+}

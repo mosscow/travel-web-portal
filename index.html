@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Italy Trip 2027 - Travel Planner</title>
+  <link rel="stylesheet" href="styles/global.css">
+  <link rel="stylesheet" href="styles/trip-planner.css">
+  <link rel="stylesheet" href="styles/chat.css">
+  
+  <!-- Authentication Check -->
+  <script>
+    (function() {
+      const authData = localStorage.getItem('travel-portal-auth') || 
+                       sessionStorage.getItem('travel-portal-auth');
+      
+      if (!authData) {
+        // Not logged in, redirect to login page
+        window.location.href = 'auth.html';
+      } else {
+        try {
+          const { timestamp } = JSON.parse(authData);
+          const now = new Date().getTime();
+          const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days
+          
+          if (now - timestamp > SESSION_DURATION) {
+            // Session expired
+            localStorage.removeItem('travel-portal-auth');
+            sessionStorage.removeItem('travel-portal-auth');
+            window.location.href = 'auth.html';
+          }
+        } catch (e) {
+          window.location.href = 'auth.html';
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="app" class="planner-wrapper"></div>
+  
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/trip-data.js"></script>
+  <script src="js/ui-components.js"></script>
+  <script src="js/trip-planner.js"></script>
+  <script src="js/travel-agent-bot.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

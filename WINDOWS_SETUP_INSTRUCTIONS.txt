@@ -1,0 +1,137 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║           WINDOWS SETUP - DOWNLOAD & SETUP INSTRUCTIONS                   ║
+║                                                                            ║
+║     For: C:\Users\Moss Fairleigh\dev\travel-web-portal                    ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+🎯 YOUR LOCAL FOLDER:
+   C:\Users\Moss Fairleigh\dev\travel-web-portal
+
+📥 DOWNLOADING FILES:
+
+All files are ready to download below. Follow these steps:
+
+1. CREATE FOLDER STRUCTURE:
+   
+   C:\Users\Moss Fairleigh\dev\travel-web-portal\
+   ├── js\        (create this folder)
+   └── styles\    (create this folder)
+
+2. DOWNLOAD ALL FILES:
+
+   ROOT FILES (download to: C:\Users\Moss Fairleigh\dev\travel-web-portal\)
+   ✓ index.html
+   ✓ auth.html
+   ✓ README.md
+   ✓ SETUP.md
+   ✓ API_CONFIG.md
+   ✓ AUTHENTICATION_GUIDE.md
+   ✓ AUTHENTICATION_UPDATE.md
+   ✓ DEPLOYMENT_MASTER_GUIDE.md
+   ✓ SYNOLOGY_DOCKER_DEPLOYMENT.md
+   ✓ GITHUB_PAGES_AUTHENTICATION.md
+   ✓ GITHUB_PUSH_GUIDE.md
+   ✓ PUSH_TO_GITHUB_QUICK.txt
+   ✓ DEPLOYMENT_COMPARISON.md
+   ✓ DEPLOYMENT_OPTIONS_SUMMARY.md
+   ✓ PROJECT_SUMMARY.md
+   ✓ Italy_Trip_2027_Complete_Itinerary.csv
+   ✓ 00-READ-ME-FIRST.txt
+   ✓ DELIVERY_MANIFEST.txt
+   ✓ FINAL_SUMMARY.txt
+   ✓ .gitignore (if available)
+
+   JS FILES (download to: C:\Users\Moss Fairleigh\dev\travel-web-portal\js\)
+   ✓ api.js
+   ✓ config.js
+   ✓ main.js
+   ✓ settings.js
+   ✓ storage.js
+   ✓ travel-agent-bot.js
+   ✓ trip-data.js
+   ✓ ui-components.js
+
+   CSS FILES (download to: C:\Users\Moss Fairleigh\dev\travel-web-portal\styles\)
+   ✓ global.css
+   ✓ trip-planner.css
+   ✓ chat.css
+
+═══════════════════════════════════════════════════════════════════════════════
+
+3. VERIFY STRUCTURE:
+
+   After downloading, your folder should look like:
+   
+   travel-web-portal\
+   ├── index.html
+   ├── auth.html
+   ├── .gitignore
+   ├── README.md
+   ├── SETUP.md
+   ├── API_CONFIG.md
+   ├── AUTHENTICATION_GUIDE.md
+   ├── [other .md files]
+   ├── js\
+   │   ├── api.js
+   │   ├── config.js
+   │   ├── main.js
+   │   ├── settings.js
+   │   ├── storage.js
+   │   ├── travel-agent-bot.js
+   │   ├── trip-data.js
+   │   └── ui-components.js
+   └── styles\
+       ├── global.css
+       ├── trip-planner.css
+       └── chat.css
+
+═══════════════════════════════════════════════════════════════════════════════
+
+4. OPEN IN GIT/TERMINAL:
+
+   Open PowerShell or Command Prompt:
+   
+   cd C:\Users\Moss Fairleigh\dev\travel-web-portal
+
+5. INITIALIZE GIT:
+
+   git init
+   git config user.name "Your Name"
+   git config user.email "your@email.com"
+   git add .
+   git commit -m "Initial commit: Complete Travel Web Portal"
+   git remote add origin https://github.com/mosscow/travel-web-portal.git
+   git branch -M main
+   git push -u origin main
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ CHECKLIST:
+
+☑ Download all files from chat
+☑ Create js\ and styles\ folders
+☑ Place files in correct locations
+☑ Open PowerShell in folder
+☑ Run git commands
+☑ Push to GitHub
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 TIPS:
+
+1. Download files one at a time from the chat
+2. Create folders in Windows Explorer first (right-click → New Folder)
+3. Use PowerShell or Git Bash for git commands
+4. Keep file names exactly as shown (case sensitive in some contexts)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🆘 HAVING ISSUES?
+
+- Can't see files? Check "Show hidden files" in View options
+- Git not found? Install from: https://git-scm.com/download/win
+- Need help with git? See GITHUB_PUSH_GUIDE.md
+
+═══════════════════════════════════════════════════════════════════════════════
