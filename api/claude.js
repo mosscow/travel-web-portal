@@ -1,7 +1,7 @@
 // api/claude.js - Vercel API Route to proxy Claude API requests
 // This bypasses CORS issues by routing requests through your server
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -52,4 +52,4 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
-}
+};
