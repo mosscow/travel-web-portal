@@ -187,8 +187,8 @@ async function testClaudeConnection() {
  * Save Telegram config
  */
 function saveTelegramConfig() {
-  const token = document.getElementById('telegramToken').value;
-  const chatId = document.getElementById('telegramChatId').value;
+  const token = document.getElementById('telegramToken').value.trim();
+  const chatId = document.getElementById('telegramChatId').value.trim();
 
   if (!token || !chatId) {
     document.getElementById('telegramMessage').innerHTML = showMessage('Please enter both token and chat ID', 'error');
@@ -197,23 +197,73 @@ function saveTelegramConfig() {
 
   localStorage.setItem('telegram_token', token);
   localStorage.setItem('telegram_chat_id', chatId);
-
-  document.getElementById('telegramMessage').innerHTML = showMessage('Telegram configuration saved. Test message not sent (optional feature)', 'info');
+  document.getElementById('telegramMessage').innerHTML = showMessage('Saved. Click Test to verify connection.', 'success');
 }
 
 /**
- * Test Telegram connection
+ * Test Telegram connection — verifies token via getMe then sends a test message
  */
-function testTelegramConnection() {
-  const token = document.getElementById('telegramToken').value;
-  const chatId = document.getElementById('telegramChatId').value;
+async function testTelegramConnection() {
+  const token = document.getElementById('telegramToken').value.trim();
+  const chatId = document.getElementById('telegramChatId').value.trim();
+  const msgEl = document.getElementById('telegramMessage');
 
   if (!token || !chatId) {
-    document.getElementById('telegramMessage').innerHTML = showMessage('Please configure Telegram first', 'error');
+    msgEl.innerHTML = showMessage('Please enter both token and chat ID first', 'error');
     return;
   }
 
-  document.getElementById('telegramMessage').innerHTML = showMessage('Telegram configuration saved. Test message not sent (optional feature)', 'info');
+  msgEl.innerHTML = showMessage('Testing connection...', 'info');
+
+  try {
+    const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const meData = await meRes.json();
+
+    if (!meData.ok) {
+      msgEl.innerHTML = showMessage('Invalid token: ' + (meData.description || 'Unknown error'), 'error');
+      return;
+    }
+
+    const botName = meData.result.username;
+
+    const sendRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `✅ Travel Portal connected!\n\nBot @${botName} is ready to send you trip updates and reminders.`
+      })
+    });
+    const sendData = await sendRes.json();
+
+    if (sendData.ok) {
+      msgEl.innerHTML = showMessage(`✅ Connected! Test message sent via @${botName}`, 'success');
+    } else {
+      msgEl.innerHTML = showMessage(`Token valid but message failed: ${sendData.description}`, 'error');
+    }
+  } catch (err) {
+    msgEl.innerHTML = showMessage('Connection error: ' + err.message, 'error');
+  }
+}
+
+/**
+ * Send a Telegram notification (callable from anywhere in the app)
+ */
+async function sendTelegramNotification(text) {
+  const token = localStorage.getItem('telegram_token');
+  const chatId = localStorage.getItem('telegram_chat_id');
+  if (!token || !chatId) return false;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+    const data = await res.json();
+    return data.ok;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
