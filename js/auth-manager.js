@@ -118,24 +118,32 @@ window.AuthManager = (function() {
   }
 
   /**
-   * Initialize on page load
+   * Get current page filename
+   */
+  function getCurrentPageFilename() {
+    const pathname = window.location.pathname;
+    const filename = pathname.split('/').pop() || 'index.html';
+    return filename || 'index.html';
+  }
+
+  /**
+   * Initialize on page load (NO IMMEDIATE REDIRECTS)
    */
   function init() {
     initializeCredentials();
+    console.log('✅ AuthManager initialized');
+    console.log('Current user:', getCurrentUser());
+    console.log('Current page:', getCurrentPageFilename());
     
-    // Only redirect if on auth.html AND already authenticated
-    const currentPage = window.location.pathname;
-    const isAuthPage = currentPage.includes('auth.html') || currentPage === '/';
-    const isProtectedPage = currentPage === '/' || currentPage === '/index.html';
+    // ONLY redirect if on auth page AND authenticated
+    const isAuthenticated = getCurrentUser() !== null;
+    const currentPage = getCurrentPageFilename();
     
-    // If on auth page and already logged in, go to index
-    if (isAuthPage && currentPage.includes('auth.html') && isAuthenticated()) {
-      window.location.href = 'index.html';
-    }
-    
-    // If on protected page and NOT logged in, go to auth
-    if (isProtectedPage && !currentPage.includes('auth.html') && !isAuthenticated()) {
-      window.location.href = 'auth.html';
+    if (currentPage === 'auth.html' && isAuthenticated) {
+      console.log('User authenticated but on auth page - redirecting to app');
+      setTimeout(() => {
+        window.location.replace('index.html');
+      }, 500);
     }
   }
 
@@ -143,7 +151,7 @@ window.AuthManager = (function() {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init();
+    setTimeout(init, 100);
   }
 
   // Public API
@@ -158,4 +166,4 @@ window.AuthManager = (function() {
   };
 })();
 
-console.log('✅ AuthManager loaded and ready');
+console.log('✅ AuthManager module loaded');
