@@ -24,9 +24,10 @@ function initSettings() {
         <div class="config-field">
           <label class="config-label">Claude Model</label>
           <select class="config-input" id="claudeModel">
-            <option value="claude-3-5-sonnet-20241022" ${localStorage.getItem('claude_model') === 'claude-3-5-sonnet-20241022' ? 'selected' : ''}>Claude 3.5 Sonnet (Recommended)</option>
-            <option value="claude-3-opus-20250219" ${localStorage.getItem('claude_model') === 'claude-3-opus-20250219' ? 'selected' : ''}>Claude 3 Opus (Most capable)</option>
-            <option value="claude-3-haiku-20250307" ${localStorage.getItem('claude_model') === 'claude-3-haiku-20250307' ? 'selected' : ''}>Claude 3 Haiku (Fast)</option>
+            <option value="claude-4-20250514" ${localStorage.getItem('claude_model') === 'claude-4-20250514' ? 'selected' : ''}>Claude 4 (Latest & Most Capable)</option>
+            <option value="claude-3-5-sonnet-20241022" ${localStorage.getItem('claude_model') === 'claude-3-5-sonnet-20241022' ? 'selected' : ''}>Claude 3.5 Sonnet (Fast & Capable)</option>
+            <option value="claude-3-opus-20250219" ${localStorage.getItem('claude_model') === 'claude-3-opus-20250219' ? 'selected' : ''}>Claude 3 Opus (Advanced)</option>
+            <option value="claude-3-haiku-20250307" ${localStorage.getItem('claude_model') === 'claude-3-haiku-20250307' ? 'selected' : ''}>Claude 3 Haiku (Fast & Lightweight)</option>
           </select>
           <div class="config-desc">Choose the model to power your Travel Agent</div>
         </div>
@@ -65,6 +66,30 @@ function initSettings() {
           <button class="btn-save" onclick="saveGoogleMapsConfig()">💾 Save</button>
           <button class="btn-save" onclick="testGoogleMapsConnection()" style="background: #4CAF50;">🧪 Test</button>
           <div id="googleMapsMessage"></div>
+        </div>
+      </div>
+
+      <!-- TELEGRAM NOTIFICATIONS -->
+      <div class="settings-section">
+        <div class="section-header">📱 Telegram Notifications</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">Get travel alerts and reminders via Telegram</div>
+        
+        <div class="config-field">
+          <label class="config-label">Telegram Bot Token</label>
+          <input type="password" class="config-input" id="telegramToken" placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" value="${localStorage.getItem('telegram_token') || ''}">
+          <div class="config-desc">Your Telegram bot token from @BotFather</div>
+        </div>
+
+        <div class="config-field">
+          <label class="config-label">Chat ID</label>
+          <input type="text" class="config-input" id="telegramChatId" placeholder="123456789" value="${localStorage.getItem('telegram_chat_id') || ''}">
+          <div class="config-desc">Your Telegram chat ID (use /start with your bot to find it)</div>
+        </div>
+
+        <div class="config-field">
+          <button class="btn-save" onclick="saveTelegramConfig()">💾 Save</button>
+          <button class="btn-save" onclick="testTelegramConnection()" style="background: #4CAF50;">🧪 Test</button>
+          <div id="telegramMessage"></div>
         </div>
       </div>
 
@@ -378,6 +403,39 @@ function editAuthUsers() {
 }
 
 /**
+ * Save Telegram config
+ */
+function saveTelegramConfig() {
+  const token = document.getElementById('telegramToken').value;
+  const chatId = document.getElementById('telegramChatId').value;
+
+  if (!token || !chatId) {
+    document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('❌ Please enter both token and chat ID', 'error');
+    return;
+  }
+
+  localStorage.setItem('telegram_token', token);
+  localStorage.setItem('telegram_chat_id', chatId);
+
+  document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('✅ Telegram configuration saved!', 'success');
+}
+
+/**
+ * Test Telegram connection
+ */
+function testTelegramConnection() {
+  const token = document.getElementById('telegramToken').value;
+  const chatId = document.getElementById('telegramChatId').value;
+
+  if (!token || !chatId) {
+    document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('❌ Please configure Telegram first', 'error');
+    return;
+  }
+
+  document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('ℹ️ Telegram configuration saved. Test message not sent (optional feature)', 'info');
+}
+
+/**
  * Change password for current user
  */
 function changePassword() {
@@ -392,22 +450,35 @@ function changePassword() {
     return;
   }
   
-  const newPassword = prompt(`Enter new password for "${currentUser}":`);
+  const currentPassword = prompt(`Enter current password for "${currentUser}":`);
+  if (!currentPassword) return;
+
+  const credentials = window.AuthManager.loadCredentials() || [];
+  const userCred = credentials.find(c => c.username === currentUser);
+  
+  if (!userCred || userCred.password !== currentPassword) {
+    alert('Current password is incorrect');
+    return;
+  }
+
+  const newPassword = prompt(`Enter new password for "${currentUser}" (min 6 characters):`);
   if (!newPassword) return;
   
   if (newPassword.length < 6) {
     alert('Password must be at least 6 characters');
     return;
   }
+
+  if (newPassword === currentPassword) {
+    alert('New password must be different from current password');
+    return;
+  }
   
-  const credentials = window.AuthManager.loadCredentials() || [];
-  const userCred = credentials.find(c => c.username === currentUser);
-  
-  if (userCred) {
-    userCred.password = newPassword;
-    if (window.AuthManager.saveCredentials(credentials)) {
-      document.getElementById('authMessage').innerHTML = UIComponents.showMessage(`✅ Password updated for "${currentUser}"!`, 'success');
-    }
+  userCred.password = newPassword;
+  if (window.AuthManager.saveCredentials(credentials)) {
+    document.getElementById('authMessage').innerHTML = UIComponents.showMessage(`✅ Password updated for "${currentUser}"!`, 'success');
+  } else {
+    document.getElementById('authMessage').innerHTML = UIComponents.showMessage('❌ Error updating password', 'error');
   }
 }
 
