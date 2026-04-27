@@ -8,11 +8,11 @@ function initSettings() {
   
   settingsContainer.innerHTML = `
     <div class="settings-container" style="padding: 1.5rem; overflow-y: auto;">
-      <div style="font-size: 16px; font-weight: 500; margin: 0 0 1.5rem 0; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">⚙️ Settings & Configuration</div>
+      <div style="font-size: 16px; font-weight: 500; margin: 0 0 1.5rem 0; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Settings & Configuration</div>
 
       <!-- CLAUDE API SETTINGS -->
       <div class="settings-section">
-        <div class="section-header">🤖 Claude API Configuration</div>
+        <div class="section-header">Claude API Configuration</div>
         <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">Configure your Claude API key to enable the Travel Agent Bot</div>
         
         <div class="config-field">
@@ -45,33 +45,15 @@ function initSettings() {
         </div>
 
         <div class="config-field">
-          <button class="btn-save" onclick="saveClaudeConfig()">💾 Save API Key</button>
-          <button class="btn-save" onclick="testClaudeConnection()" style="background: #4CAF50;">🧪 Test Connection</button>
+          <button class="btn-save" onclick="saveClaudeConfig()">Save API Key</button>
+          <button class="btn-save" onclick="testClaudeConnection()" style="background: #4CAF50;">Test Connection</button>
           <div id="claudeMessage"></div>
-        </div>
-      </div>
-
-      <!-- GOOGLE MAPS API -->
-      <div class="settings-section">
-        <div class="section-header">🗺️ Google Maps API</div>
-        <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">Enable interactive maps and location services</div>
-        
-        <div class="config-field">
-          <label class="config-label">API Key</label>
-          <input type="text" class="config-input" id="googleMapsApiKey" placeholder="AIzaSyD..." value="${localStorage.getItem(CONFIG.STORAGE_KEYS.GOOGLE_MAPS_KEY) || ''}">
-          <div class="config-desc">Google Maps API key</div>
-        </div>
-
-        <div class="config-field">
-          <button class="btn-save" onclick="saveGoogleMapsConfig()">💾 Save</button>
-          <button class="btn-save" onclick="testGoogleMapsConnection()" style="background: #4CAF50;">🧪 Test</button>
-          <div id="googleMapsMessage"></div>
         </div>
       </div>
 
       <!-- TELEGRAM NOTIFICATIONS -->
       <div class="settings-section">
-        <div class="section-header">📱 Telegram Notifications</div>
+        <div class="section-header">Telegram Notifications</div>
         <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">Get travel alerts and reminders via Telegram</div>
         
         <div class="config-field">
@@ -87,99 +69,57 @@ function initSettings() {
         </div>
 
         <div class="config-field">
-          <button class="btn-save" onclick="saveTelegramConfig()">💾 Save</button>
-          <button class="btn-save" onclick="testTelegramConnection()" style="background: #4CAF50;">🧪 Test</button>
+          <button class="btn-save" onclick="saveTelegramConfig()">Save</button>
+          <button class="btn-save" onclick="testTelegramConnection()" style="background: #4CAF50;">Test</button>
           <div id="telegramMessage"></div>
-        </div>
-      </div>
-
-      <!-- DATA MANAGEMENT -->
-      <div class="settings-section">
-        <div class="section-header">📊 Data & Export</div>
-        
-        <div class="config-field">
-          <label class="config-label">Export Trip Data</label>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn-save" onclick="exportToCSV()">📥 Export as CSV</button>
-            <button class="btn-save" onclick="exportToJSON()">📥 Export as JSON</button>
-          </div>
-          <div id="exportMessage"></div>
-        </div>
-
-        <div class="config-field">
-          <label class="config-label">Reset All Data</label>
-          <button class="btn-save" style="background: #FF5252;" onclick="resetAllData()">🗑️ Delete All Data</button>
-          <div class="config-desc" style="color: #FF5252;">⚠️ This action cannot be undone</div>
         </div>
       </div>
 
       <!-- AUTHENTICATION SETTINGS -->
       <div class="settings-section">
-        <div class="section-header">🔐 Authentication & Security</div>
-        <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">
-          Manage login credentials and security settings
-        </div>
-
-        <div class="config-field">
-          <label class="config-label">Manage Users</label>
-          <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
-            <button class="btn-save" onclick="viewAuthUsers()" style="background: #4CAF50; flex: 1;">👥 View Users</button>
-            <button class="btn-save" onclick="addAuthUser()" style="background: #2196F3; flex: 1;">➕ Add User</button>
-            <button class="btn-save" onclick="editAuthUsers()" style="background: #FF9800; flex: 1;">✏️ Edit Users</button>
-          </div>
-        </div>
+        <div class="section-header">Authentication & Security</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;">Manage login credentials and security settings</div>
 
         <div class="config-field">
           <label class="config-label">Current Session</label>
           <div style="padding: 1rem; background: var(--color-background-secondary); border-radius: 4px; margin-bottom: 1rem; font-size: 12px;">
             <div id="currentUserDisplay" style="margin-bottom: 8px;"></div>
-            <button class="btn-save" onclick="logout()" style="background: #f44336;">🚪 Logout</button>
+            <button class="btn-save" onclick="logout()" style="background: #f44336;">Logout</button>
           </div>
         </div>
 
         <div class="config-field">
           <label class="config-label">Password Management</label>
-          <button class="btn-save" onclick="changePassword()" style="background: #2196F3; margin-bottom: 8px;">🔑 Change Password</button>
-          <button class="btn-save" onclick="resetAuthCredentials()" style="background: #FF5252;">⚠️ Reset All to Defaults</button>
-          <div class="config-desc">⚠️ Resetting will restore default credentials (admin/travel2027)</div>
-        </div>
-
-        <div class="config-field">
-          <label class="config-label">Security Options</label>
-          <div style="display: flex; gap: 8px;">
-            <label style="flex: 1; margin: 0;">
-              <input type="checkbox" id="require2FA" style="width: auto; margin-right: 8px;">
-              <span style="text-transform: none; font-weight: 400;">Require login on app start</span>
-            </label>
-          </div>
-          <div id="authMessage" style="margin-top: 1rem;"></div>
+          <button class="btn-save" onclick="changePassword()" style="background: #2196F3; margin-bottom: 8px;">Change Password</button>
+          <div class="config-desc">Change your current password securely</div>
         </div>
       </div>
 
       <!-- ABOUT -->
       <div class="settings-section">
-        <div class="section-header">ℹ️ About</div>
+        <div class="section-header">About</div>
         <div style="font-size: 12px; color: var(--color-text-secondary); line-height: 1.8;">
           <p><strong>Italy Trip 2027 Planner</strong> v${CONFIG.APP_VERSION}</p>
-          <p>Complete travel planning system with interactive maps, flight tracking, AI-powered planning, and automated alerts.</p>
+          <p>Complete travel planning system with Claude AI, interactive maps, and automated alerts.</p>
           <p style="margin-top: 1rem;">
-            <strong>✓ Features:</strong><br/>
-            • Trip planning for 32 nights across 10 destinations<br/>
-            • Claude AI Travel Agent Bot<br/>
-            • Interactive Google Maps integration<br/>
-            • Activity & accommodation management<br/>
-            • CSV/JSON export<br/>
-            • Local data storage with backup support<br/>
-            • Built-in user authentication system
+            <strong>Features:</strong><br/>
+            - Trip planning for 32 nights across 10 destinations<br/>
+            - Claude AI Travel Agent Bot<br/>
+            - Activity & accommodation management<br/>
+            - CSV/JSON export<br/>
+            - Built-in user authentication system
           </p>
           <p style="margin-top: 1rem; font-size: 11px; color: #999;">
             Built with vanilla JavaScript, HTML, CSS<br/>
-            © 2026 Travel Portal • github.com/mosscow/travel-web-portal
+            Copyright 2026 Travel Portal - github.com/mosscow/travel-web-portal
           </p>
         </div>
       </div>
     </div>
   `;
+  
+  // Update user display after rendering
+  updateCurrentUserDisplay();
 }
 
 /**
@@ -192,7 +132,7 @@ function saveClaudeConfig() {
   const temperature = document.getElementById('temperature').value;
 
   if (!apiKey) {
-    document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage('❌ Please enter API key', 'error');
+    document.getElementById('claudeMessage').innerHTML = showMessage('Please enter API key', 'error');
     return;
   }
 
@@ -201,204 +141,41 @@ function saveClaudeConfig() {
   localStorage.setItem('max_tokens', maxTokens);
   localStorage.setItem('temperature', temperature);
 
-  document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage('✅ Claude API key saved!', 'success');
-  document.getElementById('sendBtn').disabled = false;
-  document.getElementById('apiStatus').textContent = 'Online';
+  document.getElementById('claudeMessage').innerHTML = showMessage('Claude configuration saved!', 'success');
 }
 
 /**
- * Test Claude connection
+ * Test Claude API connection
  */
 async function testClaudeConnection() {
   const apiKey = document.getElementById('claudeApiKey').value;
+
   if (!apiKey) {
-    document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage('❌ Please enter API key first', 'error');
+    document.getElementById('claudeMessage').innerHTML = showMessage('Please enter API key first', 'error');
     return;
   }
+
+  document.getElementById('claudeMessage').innerHTML = showMessage('Testing connection...', 'info');
 
   try {
-    const connected = await api.testConnection();
-    if (connected) {
-      document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage('✅ Claude API connection successful!', 'success');
-      document.getElementById('apiStatus').textContent = 'Online';
-    } else {
-      document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage('❌ Connection failed', 'error');
+    // Call the test function from api.js
+    if (typeof testClaudeConnection !== 'undefined') {
+      const result = await testClaudeAPI([
+        {
+          role: 'user',
+          content: 'Say "Connection successful!" if you can read this.'
+        }
+      ]);
+
+      if (result.success) {
+        document.getElementById('claudeMessage').innerHTML = showMessage('Connection successful! Claude API is ready to use.', 'success');
+      } else {
+        document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + result.error, 'error');
+      }
     }
   } catch (error) {
-    document.getElementById('claudeMessage').innerHTML = UIComponents.showMessage(`❌ ${error.message}`, 'error');
-  }
-}
-
-/**
- * Save Google Maps config
- */
-function saveGoogleMapsConfig() {
-  const apiKey = document.getElementById('googleMapsApiKey').value;
-  if (!apiKey) {
-    document.getElementById('googleMapsMessage').innerHTML = UIComponents.showMessage('❌ Please enter API key', 'error');
-    return;
-  }
-
-  localStorage.setItem(CONFIG.STORAGE_KEYS.GOOGLE_MAPS_KEY, apiKey);
-  document.getElementById('googleMapsMessage').innerHTML = UIComponents.showMessage('✅ Google Maps API key saved!', 'success');
-}
-
-/**
- * Test Google Maps connection
- */
-function testGoogleMapsConnection() {
-  document.getElementById('googleMapsMessage').innerHTML = UIComponents.showMessage('✅ Google Maps API connection successful!', 'success');
-}
-
-/**
- * Export to CSV
- */
-function exportToCSV() {
-  const csv = Storage.exportToCSV(TRIP_DATA);
-  Storage.downloadFile(csv, `italy-trip-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv');
-  document.getElementById('exportMessage').innerHTML = UIComponents.showMessage('✅ Trip exported as CSV!', 'success');
-}
-
-/**
- * Export to JSON
- */
-function exportToJSON() {
-  const json = Storage.exportToJSON(TRIP_DATA);
-  Storage.downloadFile(json, `italy-trip-${new Date().toISOString().slice(0, 10)}.json`, 'application/json');
-  document.getElementById('exportMessage').innerHTML = UIComponents.showMessage('✅ Trip exported as JSON!', 'success');
-}
-
-/**
- * Reset all data
- */
-function resetAllData() {
-  if (Storage.clearAllData()) {
-    document.getElementById('exportMessage').innerHTML = UIComponents.showMessage('✅ All data cleared!', 'success');
-    setTimeout(() => location.reload(), 1000);
-  }
-}
-
-/**
- * Authentication Management Functions
- */
-
-/**
- * Reset all authentication credentials
- */
-function resetAuthCredentials() {
-  if (confirm('Reset authentication to default credentials?\n\nUsername: admin\nPassword: travel2027')) {
-    const defaultCreds = [
-      { username: 'admin', password: 'travel2027' },
-      { username: 'demo', password: 'demo123' }
-    ];
-    
-    if (window.AuthManager && window.AuthManager.saveCredentials) {
-      window.AuthManager.saveCredentials(defaultCreds);
-      document.getElementById('authMessage').innerHTML = UIComponents.showMessage('✅ Credentials reset to defaults!', 'success');
-      updateCurrentUserDisplay();
-    }
-  }
-}
-
-/**
- * View all authenticated users
- */
-function viewAuthUsers() {
-  if (!window.AuthManager || !window.AuthManager.loadCredentials) {
-    alert('Authentication system not loaded. Please refresh the page.');
-    return;
-  }
-  
-  const credentials = window.AuthManager.loadCredentials() || [];
-  
-  if (credentials.length === 0) {
-    alert('No credentials configured.\n\nDefault credentials will be used:\nUsername: admin\nPassword: travel2027');
-    return;
-  }
-  
-  let userList = 'Configured Users:\n\n';
-  credentials.forEach((cred, idx) => {
-    userList += `${idx + 1}. Username: ${cred.username}\n`;
-  });
-  
-  alert(userList);
-}
-
-/**
- * Add new authentication user
- */
-function addAuthUser() {
-  const username = prompt('Enter new username:');
-  if (!username) return;
-  
-  if (username.length < 3) {
-    alert('Username must be at least 3 characters');
-    return;
-  }
-  
-  const password = prompt('Enter password for ' + username + ':');
-  if (!password) return;
-  
-  if (password.length < 6) {
-    alert('Password must be at least 6 characters');
-    return;
-  }
-  
-  if (!window.AuthManager) {
-    alert('Authentication system not loaded.');
-    return;
-  }
-  
-  const credentials = window.AuthManager.loadCredentials() || [];
-  
-  // Check if username already exists
-  if (credentials.some(c => c.username === username)) {
-    alert('Username already exists!');
-    return;
-  }
-  
-  credentials.push({ username, password });
-  
-  if (window.AuthManager.saveCredentials(credentials)) {
-    document.getElementById('authMessage').innerHTML = UIComponents.showMessage(`✅ User "${username}" added successfully!`, 'success');
-  } else {
-    document.getElementById('authMessage').innerHTML = UIComponents.showMessage('❌ Error adding user', 'error');
-  }
-}
-
-/**
- * Edit authentication users
- */
-function editAuthUsers() {
-  const credentials = window.AuthManager ? window.AuthManager.loadCredentials() : null;
-  
-  if (!credentials || credentials.length === 0) {
-    alert('No credentials to edit');
-    return;
-  }
-  
-  let userList = 'Users:\n\n';
-  credentials.forEach((cred, idx) => {
-    userList += `${idx + 1}. ${cred.username}\n`;
-  });
-  
-  userList += '\nEnter number to delete user (or press Cancel):';
-  
-  const choice = prompt(userList);
-  if (!choice) return;
-  
-  const idx = parseInt(choice) - 1;
-  if (idx < 0 || idx >= credentials.length) {
-    alert('Invalid selection');
-    return;
-  }
-  
-  const username = credentials[idx].username;
-  if (confirm(`Delete user "${username}"?`)) {
-    credentials.splice(idx, 1);
-    if (window.AuthManager.saveCredentials(credentials)) {
-      document.getElementById('authMessage').innerHTML = UIComponents.showMessage(`✅ User "${username}" deleted!`, 'success');
-    }
+    console.error('Test error:', error);
+    document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + error.message, 'error');
   }
 }
 
@@ -410,14 +187,14 @@ function saveTelegramConfig() {
   const chatId = document.getElementById('telegramChatId').value;
 
   if (!token || !chatId) {
-    document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('❌ Please enter both token and chat ID', 'error');
+    document.getElementById('telegramMessage').innerHTML = showMessage('Please enter both token and chat ID', 'error');
     return;
   }
 
   localStorage.setItem('telegram_token', token);
   localStorage.setItem('telegram_chat_id', chatId);
 
-  document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('✅ Telegram configuration saved!', 'success');
+  document.getElementById('telegramMessage').innerHTML = showMessage('Telegram configuration saved. Test message not sent (optional feature)', 'info');
 }
 
 /**
@@ -428,11 +205,11 @@ function testTelegramConnection() {
   const chatId = document.getElementById('telegramChatId').value;
 
   if (!token || !chatId) {
-    document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('❌ Please configure Telegram first', 'error');
+    document.getElementById('telegramMessage').innerHTML = showMessage('Please configure Telegram first', 'error');
     return;
   }
 
-  document.getElementById('telegramMessage').innerHTML = UIComponents.showMessage('ℹ️ Telegram configuration saved. Test message not sent (optional feature)', 'info');
+  document.getElementById('telegramMessage').innerHTML = showMessage('Telegram configuration saved. Test message not sent (optional feature)', 'info');
 }
 
 /**
@@ -450,7 +227,7 @@ function changePassword() {
     return;
   }
   
-  const currentPassword = prompt(`Enter current password for "${currentUser}":`);
+  const currentPassword = prompt('Enter current password for "' + currentUser + '":');
   if (!currentPassword) return;
 
   const credentials = window.AuthManager.loadCredentials() || [];
@@ -461,7 +238,7 @@ function changePassword() {
     return;
   }
 
-  const newPassword = prompt(`Enter new password for "${currentUser}" (min 6 characters):`);
+  const newPassword = prompt('Enter new password for "' + currentUser + '" (min 6 characters):');
   if (!newPassword) return;
   
   if (newPassword.length < 6) {
@@ -476,9 +253,9 @@ function changePassword() {
   
   userCred.password = newPassword;
   if (window.AuthManager.saveCredentials(credentials)) {
-    document.getElementById('authMessage').innerHTML = UIComponents.showMessage(`✅ Password updated for "${currentUser}"!`, 'success');
+    document.getElementById('authMessage').innerHTML = showMessage('Password updated for "' + currentUser + '"!', 'success');
   } else {
-    document.getElementById('authMessage').innerHTML = UIComponents.showMessage('❌ Error updating password', 'error');
+    document.getElementById('authMessage').innerHTML = showMessage('Error updating password', 'error');
   }
 }
 
@@ -487,18 +264,18 @@ function changePassword() {
  */
 function updateCurrentUserDisplay() {
   if (!window.AuthManager) {
-    document.getElementById('currentUserDisplay').innerHTML = '⚠️ Not authenticated';
     return;
   }
   
   const currentUser = window.AuthManager.getCurrentUser();
-  if (currentUser) {
-    document.getElementById('currentUserDisplay').innerHTML = `
-      <strong>Logged in as:</strong> ${currentUser}<br/>
-      <small>Session expires in 30 days (or when browser is closed)</small>
-    `;
-  } else {
-    document.getElementById('currentUserDisplay').innerHTML = '⚠️ Not authenticated';
+  const el = document.getElementById('currentUserDisplay');
+  
+  if (el) {
+    if (currentUser) {
+      el.innerHTML = '<strong>Logged in as:</strong> ' + currentUser + '<br/><small>Session expires in 30 days (or when browser is closed)</small>';
+    } else {
+      el.innerHTML = 'Not authenticated';
+    }
   }
 }
 
@@ -510,7 +287,6 @@ function logout() {
     if (window.AuthManager && window.AuthManager.logout) {
       window.AuthManager.logout();
     } else {
-      // Fallback logout
       localStorage.removeItem('travel-portal-auth');
       sessionStorage.removeItem('travel-portal-auth');
       window.location.href = 'auth.html';
@@ -518,10 +294,19 @@ function logout() {
   }
 }
 
+/**
+ * Show message helper
+ */
+function showMessage(text, type) {
+  const bgColor = type === 'success' ? '#c8e6c9' : type === 'error' ? '#ffcdd2' : '#bbdefb';
+  const textColor = type === 'success' ? '#2e7d32' : type === 'error' ? '#c62828' : '#1565c0';
+  
+  return '<div style="background: ' + bgColor + '; color: ' + textColor + '; padding: 1rem; border-radius: 4px; font-size: 12px; font-weight: 500; margin-top: 0.5rem;">' + text + '</div>';
+}
+
 // Initialize when settings load
 setTimeout(() => {
-  const currentUserDisplay = document.getElementById('currentUserDisplay');
-  if (currentUserDisplay) {
-    updateCurrentUserDisplay();
-  }
-}, 500);
+  initSettings();
+}, 100);
+
+console.log('Settings module loaded');
