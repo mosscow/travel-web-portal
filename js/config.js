@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // App Info
-  APP_NAME: 'Italy Trip 2027 - Travel Planner',
+  APP_NAME: 'Travel Planner',
   APP_VERSION: '2.0.0',
   
   // API Endpoints
@@ -21,7 +21,7 @@ const CONFIG = {
   
   // Trip Data
   TRIP: {
-    TITLE: 'Italy Trip 2027',
+    TITLE: 'Travel Planner',
     DESTINATION: 'Sydney → Rome',
     START_DATE: '2027-08-01',
     END_DATE: '2027-08-28',
