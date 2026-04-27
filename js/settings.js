@@ -158,7 +158,9 @@ async function testClaudeConnection() {
   document.getElementById('claudeMessage').innerHTML = showMessage('Testing connection...', 'info');
 
   try {
-    // Call the test function from api.js
+    console.log('Testing API connection...');
+    console.log('API Key:', apiKey.substring(0, 10) + '...');
+    
     const result = await callClaudeAPI([
       {
         role: 'user',
@@ -166,11 +168,15 @@ async function testClaudeConnection() {
       }
     ]);
 
-      if (result.success) {
-        document.getElementById('claudeMessage').innerHTML = showMessage('Connection successful! Claude API is ready to use.', 'success');
-      } else {
-        document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + result.error, 'error');
-      }
+    console.log('API Result:', result);
+
+    if (result.success) {
+      document.getElementById('claudeMessage').innerHTML = showMessage('Connection successful! Claude API is ready to use.', 'success');
+    } else {
+      const errorMsg = typeof result.error === 'string' ? result.error : (result.error?.message || JSON.stringify(result.error));
+      console.error('API Error:', errorMsg);
+      document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + errorMsg, 'error');
+    }
   } catch (error) {
     console.error('Test error:', error);
     document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + error.message, 'error');
