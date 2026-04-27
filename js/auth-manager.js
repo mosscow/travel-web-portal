@@ -123,11 +123,19 @@ window.AuthManager = (function() {
   function init() {
     initializeCredentials();
     
-    // Check authentication on protected pages
-    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
-      if (!isAuthenticated()) {
-        window.location.href = 'auth.html';
-      }
+    // Only redirect if on auth.html AND already authenticated
+    const currentPage = window.location.pathname;
+    const isAuthPage = currentPage.includes('auth.html') || currentPage === '/';
+    const isProtectedPage = currentPage === '/' || currentPage === '/index.html';
+    
+    // If on auth page and already logged in, go to index
+    if (isAuthPage && currentPage.includes('auth.html') && isAuthenticated()) {
+      window.location.href = 'index.html';
+    }
+    
+    // If on protected page and NOT logged in, go to auth
+    if (isProtectedPage && !currentPage.includes('auth.html') && !isAuthenticated()) {
+      window.location.href = 'auth.html';
     }
   }
 
