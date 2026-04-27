@@ -37,13 +37,21 @@ async function callClaudeAPI(messages, options = {}) {
     });
 
     console.log('Proxy response status:', response.status);
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return {
+        success: false,
+        error: 'Proxy not available — deploy to Vercel to use the Claude API.',
+        errorCode: 'PROXY_NOT_FOUND'
+      };
+    }
     const data = await response.json();
     console.log('Proxy response data:', data);
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || 'Claude API request failed',
+        error: data.error?.message || data.error || 'Claude API request failed',
         errorCode: data.error?.type || 'API_ERROR',
         details: data
       };
