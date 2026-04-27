@@ -30,7 +30,7 @@ async function callClaudeAPI(messages, options = {}) {
         model: model,
         max_tokens: maxTokens,
         temperature: temperature,
-        apiKey: apiKey // Proxy will use this to call Claude
+        apiKey: apiKey
       })
     });
 
@@ -45,7 +45,6 @@ async function callClaudeAPI(messages, options = {}) {
       };
     }
 
-    // Extract the response text
     if (data.content && data.content.length > 0) {
       const textContent = data.content.find(block => block.type === 'text');
       if (textContent) {
@@ -92,22 +91,18 @@ async function testClaudeConnection() {
  * Send message to Claude Travel Agent
  */
 async function sendTravelAgentMessage(userMessage) {
-  // Get conversation history
   const history = getTravelAgentHistory() || [];
 
-  // Build messages array
   const messages = [
     {
       role: 'user',
-      content: `You are a helpful Travel Planning Assistant for an Italy trip. You provide recommendations for activities, accommodations, transportation, and travel tips. Current context: 32-night Italy trip covering Rome, Naples, Amalfi, Tuscany, Milan, Venice. Help the user plan their trip!\n\nUser: ${userMessage}`
+      content: 'You are a helpful Travel Planning Assistant for an Italy trip. You provide recommendations for activities, accommodations, transportation, and travel tips. Current context: 32-night Italy trip covering Rome, Naples, Amalfi, Tuscany, Milan, Venice. Help the user plan their trip!\n\nUser: ' + userMessage
     }
   ];
 
-  // Call API
   const result = await callClaudeAPI(messages);
 
   if (result.success) {
-    // Save to history
     saveTravelAgentMessage({
       role: 'user',
       content: userMessage
@@ -141,11 +136,11 @@ function saveTravelAgentMessage(message) {
   try {
     const history = getTravelAgentHistory();
     history.push({
-      ...message,
+      role: message.role,
+      content: message.content,
       timestamp: new Date().toISOString()
     });
     
-    // Keep only last 50 messages to avoid storage limits
     if (history.length > 50) {
       history.shift();
     }
