@@ -159,20 +159,18 @@ async function testClaudeConnection() {
 
   try {
     // Call the test function from api.js
-    if (typeof testClaudeConnection !== 'undefined') {
-      const result = await testClaudeAPI([
-        {
-          role: 'user',
-          content: 'Say "Connection successful!" if you can read this.'
-        }
-      ]);
+    const result = await callClaudeAPI([
+      {
+        role: 'user',
+        content: 'Say "Connection successful!" if you can read this.'
+      }
+    ]);
 
       if (result.success) {
         document.getElementById('claudeMessage').innerHTML = showMessage('Connection successful! Claude API is ready to use.', 'success');
       } else {
         document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + result.error, 'error');
       }
-    }
   } catch (error) {
     console.error('Test error:', error);
     document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + error.message, 'error');
