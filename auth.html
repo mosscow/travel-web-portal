@@ -5,532 +5,180 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Travel Portal - Login</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
-      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       display: flex;
-      align-items: center;
       justify-content: center;
-      margin: 0;
+      align-items: center;
     }
-
     .login-container {
       background: white;
       padding: 2rem;
       border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
       width: 100%;
       max-width: 400px;
     }
-
-    .login-header {
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #212121;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #666;
       text-align: center;
       margin-bottom: 2rem;
     }
-
-    .login-header h1 {
-      font-size: 28px;
-      color: #1976D2;
-      margin-bottom: 0.5rem;
-    }
-
-    .login-header p {
-      color: #666;
-      font-size: 14px;
-    }
-
     .form-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
-
     label {
       display: block;
       font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #666;
-      margin-bottom: 8px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #212121;
     }
-
-    input[type="text"],
-    input[type="password"] {
+    input {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 14px;
-      transition: border-color 0.2s;
+      font-family: inherit;
     }
-
-    input[type="text"]:focus,
-    input[type="password"]:focus {
+    input:focus {
       outline: none;
-      border-color: #1976D2;
-      box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
     }
-
-    button {
+    .form-group input {
+      margin-bottom: 0;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+    .btn-login {
       width: 100%;
       padding: 12px;
-      background: #1976D2;
+      background: #667eea;
       color: white;
       border: none;
       border-radius: 4px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
-
-    button:hover {
-      background: #1565C0;
+    .btn-login:hover {
+      background: #5568d3;
     }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .error-message {
-      color: #d32f2f;
-      font-size: 12px;
+    .message {
       margin-top: 1rem;
-      text-align: center;
-      display: none;
-      padding: 8px;
-      background: #ffebee;
+      padding: 10px;
       border-radius: 4px;
+      font-size: 12px;
+      display: none;
     }
-
-    .success-message {
+    .message.error {
+      background: #ffcdd2;
+      color: #c62828;
+      display: block;
+    }
+    .message.success {
+      background: #c8e6c9;
       color: #2e7d32;
-      font-size: 12px;
-      margin-top: 1rem;
-      text-align: center;
-      display: none;
-      padding: 8px;
-      background: #e8f5e9;
-      border-radius: 4px;
+      display: block;
     }
-
-    .remember-me {
-      display: flex;
-      align-items: center;
-      font-size: 12px;
-      margin-bottom: 1.5rem;
-    }
-
-    .remember-me input {
-      margin-right: 8px;
-      cursor: pointer;
-      width: auto;
-    }
-
-    .remember-me label {
-      margin: 0;
-      cursor: pointer;
-      text-transform: none;
-      font-weight: 400;
-      text-transform: capitalize;
-    }
-
-    .login-footer {
-      text-align: center;
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #eee;
-      font-size: 12px;
-    }
-
-    .login-footer a {
-      color: #1976D2;
-      text-decoration: none;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .login-footer a:hover {
-      text-decoration: underline;
-    }
-
-    .demo-login {
+    .demo-creds {
       background: #f5f5f5;
       padding: 1rem;
       border-radius: 4px;
-      margin-top: 1rem;
-      font-size: 11px;
-      color: #666;
-    }
-
-    .demo-login strong {
-      color: #333;
-    }
-
-    .loading {
-      display: none;
-      text-align: center;
-      color: #666;
+      margin-top: 1.5rem;
       font-size: 12px;
+      color: #666;
     }
-
-    .spinner {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid #ddd;
-      border-top-color: #1976D2;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      margin-right: 6px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .demo-creds strong {
+      color: #212121;
     }
   </style>
 </head>
 <body>
   <div class="login-container">
-    <div class="login-header">
-      <h1>🇮🇹 Travel Portal</h1>
-      <p>Italy Trip 2027 Planner</p>
-    </div>
+    <h1>Travel Planner</h1>
 
-    <!-- Login Form -->
-    <form id="loginForm" style="display: block;">
+    <form id="loginForm">
       <div class="form-group">
         <label for="username">Username</label>
-        <input type="text" id="username" required placeholder="Enter username" autocomplete="username">
+        <input type="text" id="username" placeholder="admin" required>
       </div>
 
       <div class="form-group">
         <label for="password">Password</label>
-        <input type="password" id="password" required placeholder="Enter password" autocomplete="current-password">
+        <input type="password" id="password" placeholder="••••••••" required>
       </div>
 
-      <div class="remember-me">
+      <div class="checkbox-group">
         <input type="checkbox" id="rememberMe">
-        <label for="rememberMe">Remember me for 30 days</label>
+        <label for="rememberMe" style="margin: 0; font-weight: 400;">Remember me for 30 days</label>
       </div>
 
-      <div class="loading" id="loading">
-        <span class="spinner"></span>
-        <span>Authenticating...</span>
-      </div>
-
-      <button type="submit" id="loginBtn">Login</button>
-
-      <div class="error-message" id="errorMessage"></div>
-      <div class="success-message" id="successMessage"></div>
+      <button type="submit" class="btn-login">Login</button>
+      <div id="message" class="message"></div>
     </form>
 
-    <!-- Demo Credentials Display -->
-    <div class="demo-login" id="demoInfo"></div>
-
-    <div class="login-footer">
-      First time? <a onclick="showDemoCredentials()">Use demo login</a> | 
-      <a onclick="showHelp()">Need help?</a>
+    <div class="demo-creds">
+      <strong>Demo Credentials:</strong><br>
+      Username: <strong>admin</strong><br>
+      Password: <strong>travel2027</strong>
     </div>
   </div>
 
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth-manager.js"></script>
+
   <script>
-    // ============================================
-    // AUTHENTICATION SYSTEM
-    // ============================================
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
 
-    const AUTH_CONFIG = {
-      sessionKey: 'travel-portal-auth',
-      sessionDuration: 30 * 24 * 60 * 60 * 1000, // 30 days
-      credentialsKey: 'travel-portal-credentials',
-      enableDebugMode: true
-    };
-
-    // Default demo credentials
-    const DEFAULT_CREDENTIALS = [
-      { username: 'admin', password: 'travel2027' },
-      { username: 'demo', password: 'demo123' }
-    ];
-
-    // ============================================
-    // Initialize Auth System
-    // ============================================
-
-    function initializeAuth() {
-      // Check if already logged in
-      checkExistingSession();
-      
-      // Load and display credentials
-      updateCredentialsDisplay();
-      
-      // Setup event listeners
-      setupEventListeners();
-      
-      // Initialize credentials if not exists
-      if (!loadCredentials()) {
-        saveCredentials(DEFAULT_CREDENTIALS);
-      }
-    }
-
-    // ============================================
-    // Credentials Management
-    // ============================================
-
-    function loadCredentials() {
-      try {
-        const stored = localStorage.getItem(AUTH_CONFIG.credentialsKey);
-        return stored ? JSON.parse(stored) : null;
-      } catch (e) {
-        console.error('Error loading credentials:', e);
-        return null;
-      }
-    }
-
-    function saveCredentials(credentials) {
-      try {
-        localStorage.setItem(AUTH_CONFIG.credentialsKey, JSON.stringify(credentials));
-        updateCredentialsDisplay();
-        return true;
-      } catch (e) {
-        console.error('Error saving credentials:', e);
-        return false;
-      }
-    }
-
-    function resetCredentials() {
-      if (confirm('Reset credentials to defaults?')) {
-        saveCredentials(DEFAULT_CREDENTIALS);
-        showSuccess('Credentials reset to default');
-      }
-    }
-
-    function updateCredentialsDisplay() {
-      const credentials = loadCredentials() || DEFAULT_CREDENTIALS;
-      const demoInfo = document.getElementById('demoInfo');
-      
-      let html = '<strong>Demo Credentials Available:</strong><br>';
-      credentials.slice(0, 2).forEach((cred, idx) => {
-        html += `${idx + 1}. <strong>${cred.username}</strong> / ${cred.password}<br>`;
-      });
-      
-      demoInfo.innerHTML = html;
-    }
-
-    // ============================================
-    // Session Management
-    // ============================================
-
-    function checkExistingSession() {
-      const authData = localStorage.getItem(AUTH_CONFIG.sessionKey) || 
-                       sessionStorage.getItem(AUTH_CONFIG.sessionKey);
-      
-      if (authData) {
-        try {
-          const { timestamp } = JSON.parse(authData);
-          const now = new Date().getTime();
-          
-          if (now - timestamp < AUTH_CONFIG.sessionDuration) {
-            // Session still valid
-            redirect();
-            return;
-          }
-        } catch (e) {
-          // Invalid session data
-        }
-        
-        // Session expired
-        clearSession();
-      }
-    }
-
-    function clearSession() {
-      localStorage.removeItem(AUTH_CONFIG.sessionKey);
-      sessionStorage.removeItem(AUTH_CONFIG.sessionKey);
-    }
-
-    // ============================================
-    // Login Handler
-    // ============================================
-
-    function handleLogin(event) {
-      event.preventDefault();
-      
-      const username = document.getElementById('username').value.trim();
+      const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       const rememberMe = document.getElementById('rememberMe').checked;
-      
-      // Show loading state
-      showLoading(true);
-      
-      // Simulate network delay for security feel
-      setTimeout(() => {
-        if (validateCredentials(username, password)) {
-          createSession(username, rememberMe);
-          showSuccess('Login successful! Redirecting...');
-          
-          setTimeout(() => {
-            redirect();
-          }, 500);
-        } else {
-          showError('Invalid username or password');
-          document.getElementById('password').value = '';
-          showLoading(false);
-        }
-      }, 300);
-    }
+      const messageEl = document.getElementById('message');
 
-    function validateCredentials(username, password) {
-      const credentials = loadCredentials() || DEFAULT_CREDENTIALS;
-      return credentials.some(cred => 
-        cred.username === username && cred.password === password
-      );
-    }
+      // Authenticate
+      const result = window.AuthManager.authenticate(username, password, rememberMe);
 
-    function createSession(username, rememberMe) {
-      const token = btoa(`${username}:${new Date().getTime()}`);
-      const authData = {
-        token: token,
-        timestamp: new Date().getTime(),
-        username: username
-      };
-
-      // Store in appropriate storage
-      if (rememberMe) {
-        localStorage.setItem(AUTH_CONFIG.sessionKey, JSON.stringify(authData));
+      if (result.success) {
+        messageEl.textContent = 'Login successful! Redirecting...';
+        messageEl.className = 'message success';
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 500);
+      } else {
+        messageEl.textContent = 'Invalid username or password';
+        messageEl.className = 'message error';
+        document.getElementById('password').value = '';
       }
-      sessionStorage.setItem(AUTH_CONFIG.sessionKey, JSON.stringify(authData));
-      
-      if (AUTH_CONFIG.enableDebugMode) {
-        console.log('Session created for:', username);
-      }
-    }
+    });
 
-    // ============================================
-    // UI Helpers
-    // ============================================
-
-    function showLoading(show) {
-      document.getElementById('loading').style.display = show ? 'block' : 'none';
-      document.getElementById('loginBtn').disabled = show;
-    }
-
-    function showError(message) {
-      const errorDiv = document.getElementById('errorMessage');
-      errorDiv.textContent = message;
-      errorDiv.style.display = 'block';
-      
-      setTimeout(() => {
-        errorDiv.style.display = 'none';
-      }, 5000);
-    }
-
-    function showSuccess(message) {
-      const successDiv = document.getElementById('successMessage');
-      successDiv.textContent = message;
-      successDiv.style.display = 'block';
-      
-      setTimeout(() => {
-        successDiv.style.display = 'none';
-      }, 3000);
-    }
-
-    function showDemoCredentials() {
-      const credentials = loadCredentials() || DEFAULT_CREDENTIALS;
-      const firstCred = credentials[0];
-      
-      document.getElementById('username').value = firstCred.username;
-      document.getElementById('password').value = firstCred.password;
-      document.getElementById('username').focus();
-    }
-
-    function showHelp() {
-      alert(
-        'Travel Portal Login Help\n\n' +
-        'Default Credentials:\n' +
-        '• Username: admin\n' +
-        '• Password: travel2027\n\n' +
-        'Features:\n' +
-        '• Check "Remember me" to stay logged in for 30 days\n' +
-        '• Change credentials in Settings → Authentication\n' +
-        '• Each user session is secure and encrypted\n\n' +
-        'Need to reset? Clear browser storage and refresh.'
-      );
-    }
-
-    function redirect() {
+    // Check if already logged in
+    if (window.AuthManager && window.AuthManager.isAuthenticated()) {
       window.location.href = 'index.html';
     }
-
-    // ============================================
-    // Event Listeners
-    // ============================================
-
-    function setupEventListeners() {
-      document.getElementById('loginForm').addEventListener('submit', handleLogin);
-      
-      // Allow Enter key in both fields
-      document.getElementById('username').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          document.getElementById('password').focus();
-        }
-      });
-      
-      document.getElementById('password').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          handleLogin(e);
-        }
-      });
-    }
-
-    // ============================================
-    // Global Functions for Settings Tab
-    // ============================================
-
-    // Export for use in main app
-    window.AuthManager = {
-      loadCredentials: loadCredentials,
-      saveCredentials: saveCredentials,
-      resetCredentials: resetCredentials,
-      getCurrentUser: function() {
-        const authData = localStorage.getItem(AUTH_CONFIG.sessionKey) || 
-                         sessionStorage.getItem(AUTH_CONFIG.sessionKey);
-        if (authData) {
-          try {
-            return JSON.parse(authData).username;
-          } catch (e) {
-            return null;
-          }
-        }
-        return null;
-      },
-      logout: function() {
-        clearSession();
-        window.location.href = 'auth.html';
-      },
-      isAuthenticated: function() {
-        checkExistingSession();
-        return !!(localStorage.getItem(AUTH_CONFIG.sessionKey) || 
-                  sessionStorage.getItem(AUTH_CONFIG.sessionKey));
-      }
-    };
-
-    // ============================================
-    // Start Authentication System
-    // ============================================
-
-    window.addEventListener('DOMContentLoaded', initializeAuth);
   </script>
 </body>
 </html>
