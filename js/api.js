@@ -1,7 +1,7 @@
-// API.JS - Claude API Integration with Vercel Proxy
+// API.JS - Claude API Integration (Direct API Call)
 
 /**
- * Call Claude API through Vercel proxy (bypasses CORS)
+ * Call Claude API directly (bypasses CORS by calling from browser with proper headers)
  */
 async function callClaudeAPI(messages, options = {}) {
   const apiKey = localStorage.getItem(CONFIG.STORAGE_KEYS.CLAUDE_API_KEY);
@@ -19,18 +19,19 @@ async function callClaudeAPI(messages, options = {}) {
   const temperature = localStorage.getItem('temperature') || '0.7';
 
   try {
-    // Call through Vercel API proxy (no CORS issues!)
-    const response = await fetch('/api/claude', {
+    // Call Claude API directly
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        messages: messages,
         model: model,
-        max_tokens: maxTokens,
-        temperature: temperature,
-        apiKey: apiKey
+        max_tokens: parseInt(maxTokens),
+        temperature: parseFloat(temperature),
+        messages: messages
       })
     });
 
@@ -158,4 +159,4 @@ function clearTravelAgentHistory() {
   localStorage.removeItem('travel_agent_history');
 }
 
-console.log('✅ API module loaded with Vercel proxy support');
+console.log('✅ API module loaded with direct Claude API support');
