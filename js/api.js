@@ -14,7 +14,7 @@ async function callClaudeAPI(messages, options = {}) {
     };
   }
 
-  const model = localStorage.getItem('claude_model') || 'claude-4-20250514';
+  const model = localStorage.getItem('claude_model') || CONFIG.CLAUDE.DEFAULT_MODEL;
   const maxTokens = localStorage.getItem('max_tokens') || '2000';
   const temperature = localStorage.getItem('temperature') || '0.7';
 

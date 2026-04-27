@@ -14,7 +14,7 @@ const CONFIG = {
   
   // Claude Model Configuration
   CLAUDE: {
-    DEFAULT_MODEL: 'claude-3-5-sonnet-20241022',
+    DEFAULT_MODEL: 'claude-opus-4-7',
     MAX_TOKENS: 2000,
     TEMPERATURE: 0.7,
   },

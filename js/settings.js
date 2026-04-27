@@ -24,10 +24,10 @@ function initSettings() {
         <div class="config-field">
           <label class="config-label">Claude Model</label>
           <select class="config-input" id="claudeModel">
-            <option value="claude-4-20250514" ${localStorage.getItem('claude_model') === 'claude-4-20250514' ? 'selected' : ''}>Claude 4 (Latest & Most Capable)</option>
-            <option value="claude-3-5-sonnet-20241022" ${localStorage.getItem('claude_model') === 'claude-3-5-sonnet-20241022' ? 'selected' : ''}>Claude 3.5 Sonnet (Fast & Capable)</option>
-            <option value="claude-3-opus-20250219" ${localStorage.getItem('claude_model') === 'claude-3-opus-20250219' ? 'selected' : ''}>Claude 3 Opus (Advanced)</option>
-            <option value="claude-3-haiku-20250307" ${localStorage.getItem('claude_model') === 'claude-3-haiku-20250307' ? 'selected' : ''}>Claude 3 Haiku (Fast & Lightweight)</option>
+            <option value="claude-opus-4-7"           ${(localStorage.getItem('claude_model') || 'claude-opus-4-7') === 'claude-opus-4-7'           ? 'selected' : ''}>Claude Opus 4.7 (Most Capable)</option>
+            <option value="claude-sonnet-4-6"         ${localStorage.getItem('claude_model') === 'claude-sonnet-4-6'         ? 'selected' : ''}>Claude Sonnet 4.6 (Fast & Capable)</option>
+            <option value="claude-haiku-4-5-20251001" ${localStorage.getItem('claude_model') === 'claude-haiku-4-5-20251001' ? 'selected' : ''}>Claude Haiku 4.5 (Lightweight)</option>
+            <option value="claude-3-5-sonnet-20241022"${localStorage.getItem('claude_model') === 'claude-3-5-sonnet-20241022'? 'selected' : ''}>Claude 3.5 Sonnet (Legacy)</option>
           </select>
           <div class="config-desc">Choose the model to power your Travel Agent</div>
         </div>
