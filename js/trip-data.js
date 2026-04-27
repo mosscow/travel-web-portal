@@ -6,7 +6,13 @@ const TRIP_DATA = {
   startDate: '2027-08-01',
   endDate: '2027-08-28',
   nights: 32,
-  
+  budget: {
+    total: 0,
+    currency: 'AUD',
+    categories: { accommodation: 0, flights: 0, food: 0, activities: 0, transport: 0, other: 0 }
+  },
+  flights: [],
+
   sections: [
     {
       id: 1,
@@ -19,9 +25,9 @@ const TRIP_DATA = {
       highlights: 'Colosseum, Roman Forum, Trastevere',
       location: '41.9028,12.4964',
       activities: [
-        { id: 1, time: '09:00', title: 'Colosseum tour', notes: 'Book skip-the-line tickets online', location: '41.8902,12.4923' },
-        { id: 2, time: '11:00', title: 'Roman Forum exploration', notes: 'Allow 2-3 hours for exploration', location: '41.8925,12.4858' },
-        { id: 3, time: '19:00', title: 'Trastevere dinner', notes: 'Make reservations in advance', location: '41.8947,12.4667' }
+        { id: 1, day: 1, priority: 1, durationHrs: 2, durationMins: 0,  time: '09:00', title: 'Colosseum tour', notes: 'Book skip-the-line tickets online', location: '41.8902,12.4923' },
+        { id: 2, day: 1, priority: 2, durationHrs: 3, durationMins: 0,  time: '11:00', title: 'Roman Forum exploration', notes: 'Allow 2-3 hours for exploration', location: '41.8925,12.4858' },
+        { id: 3, day: 2, priority: 1, durationHrs: 1, durationMins: 30, time: '19:00', title: 'Trastevere dinner', notes: 'Make reservations in advance', location: '41.8947,12.4667' }
       ],
       accommodations: [
         { id: 1, name: 'Hotel Artemide', checkIn: '2027-08-01', checkOut: '2027-08-02', cost: 'AUD $350/night', url: 'booking.com', location: '41.9012,12.4733' }
@@ -41,8 +47,8 @@ const TRIP_DATA = {
       highlights: 'Pompeii ruins, Mount Vesuvius, pizza',
       location: '40.8517,14.2681',
       activities: [
-        { id: 1, time: '09:00', title: 'Pompeii guided tour', notes: 'Bring water and sun protection', location: '40.7505,14.6268' },
-        { id: 2, time: '12:00', title: 'Mount Vesuvius hike', notes: '1-2 hour walk to crater', location: '40.8096,14.4268' }
+        { id: 1, day: 1, priority: 1, durationHrs: 3, durationMins: 0, time: '09:00', title: 'Pompeii guided tour', notes: 'Bring water and sun protection', location: '40.7505,14.6268' },
+        { id: 2, day: 2, priority: 1, durationHrs: 2, durationMins: 0, time: '12:00', title: 'Mount Vesuvius hike', notes: '1-2 hour walk to crater', location: '40.8096,14.4268' }
       ],
       accommodations: [
         { id: 1, name: 'Hotel near station', checkIn: '2027-08-03', checkOut: '2027-08-04', cost: 'AUD $200/night', url: 'booking.com', location: '40.8541,14.2687' }
@@ -60,8 +66,8 @@ const TRIP_DATA = {
       highlights: 'Lemon Path hike, Roman Villa, beaches',
       location: '40.6309,14.4469',
       activities: [
-        { id: 1, time: '09:00', title: 'Lemon Path hike', notes: 'Sentiero dei Limoni - moderate difficulty', location: '40.6339,14.4502' },
-        { id: 2, time: '15:00', title: 'Roman Villa visit', notes: 'Small entrance fee €6', location: '40.6315,14.4475' }
+        { id: 1, day: 1, priority: 1, durationHrs: 3, durationMins: 0,  time: '09:00', title: 'Lemon Path hike', notes: 'Sentiero dei Limoni - moderate difficulty', location: '40.6339,14.4502' },
+        { id: 2, day: 2, priority: 1, durationHrs: 1, durationMins: 0,  time: '15:00', title: 'Roman Villa visit', notes: 'Small entrance fee €6', location: '40.6315,14.4475' }
       ],
       accommodations: [
         { id: 1, name: 'Hotel Miramare', checkIn: '2027-08-05', checkOut: '2027-08-06', cost: 'AUD $250/night', url: 'booking.com', location: '40.6309,14.4469' }
@@ -252,3 +258,21 @@ class TripManager {
 
 // Global trip manager
 const tripManager = new TripManager();
+
+function createEmptyTrip(title, destination, startDate, endDate) {
+  return {
+    id: Date.now(),
+    title: title || 'New Trip',
+    destination: destination || 'TBD',
+    startDate: startDate || '',
+    endDate: endDate || '',
+    nights: 0,
+    budget: {
+      total: 0,
+      currency: 'AUD',
+      categories: { accommodation: 0, flights: 0, food: 0, activities: 0, transport: 0, other: 0 }
+    },
+    flights: [],
+    sections: []
+  };
+}

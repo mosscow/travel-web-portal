@@ -46,24 +46,27 @@ html, body {
 /* HEADER */
 .global-header {
   background: var(--color-background-primary);
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem 0;
   border-bottom: 0.5px solid var(--color-border-tertiary);
 }
 
-.trip-title {
-  font-size: 28px;
-  font-weight: 500;
-  margin: 0 0 8px 0;
-  color: var(--color-text-primary);
+.header-title-block {
+  margin-bottom: 1rem;
 }
 
-.trip-meta {
-  display: flex;
-  gap: 20px;
-  font-size: 13px;
+.trip-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: var(--color-text-primary);
+  letter-spacing: 0.3px;
+}
+
+.trip-instruction {
+  font-size: 11px;
+  font-weight: 500;
   color: var(--color-text-secondary);
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
+  letter-spacing: 0.6px;
 }
 
 .header-tabs {
@@ -189,6 +192,68 @@ select:focus {
   border-radius: var(--border-radius-md);
   font-size: 12px;
   font-weight: 500;
+}
+
+/* UNDO TOAST */
+.undo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #323232;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 13px;
+  z-index: 2000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.25s ease;
+  white-space: nowrap;
+  pointer-events: all;
+}
+
+.undo-toast.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+.undo-toast-btn {
+  background: none;
+  border: none;
+  color: #90caf9;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.undo-toast-btn:hover {
+  color: #bbdefb;
+}
+
+/* SAVED INDICATOR */
+.saved-indicator {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #2e7d32;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 1900;
+}
+
+.saved-indicator.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* SCROLLBAR */

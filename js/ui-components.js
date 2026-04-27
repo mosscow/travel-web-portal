@@ -7,31 +7,51 @@ class UIComponents {
   static createHeader() {
     return `
       <div class="global-header">
-        <div class="trip-title">${CONFIG.TRIP.TITLE}</div>
-        <div class="trip-meta">
-          <span>📍 ${CONFIG.TRIP.DESTINATION}</span>
-          <span>📅 Aug 1–28, 2027</span>
-          <span>🗓️ ${CONFIG.TRIP.NIGHTS} nights</span>
+        <div class="header-title-block">
+          <div class="trip-title" id="headerTripTitle">${CONFIG.TRIP.TITLE} OVERVIEW</div>
+          <div class="trip-instruction" id="headerInstruction">CLICK SECTION TILE BELOW TO EDIT SECTION</div>
         </div>
         <div class="header-tabs" id="headerTabs">
-          <button class="header-tab-btn active" onclick="switchHeaderTab(0)">Trip planner</button>
-          <button class="header-tab-btn" onclick="switchHeaderTab(1)">🤖 Travel agent bot</button>
+          <button class="header-tab-btn active" onclick="switchHeaderTab(0)">✈️ Trip Planner</button>
+          <button class="header-tab-btn" onclick="switchHeaderTab(1)">🤖 Travel Agent</button>
           <button class="header-tab-btn" onclick="switchHeaderTab(2)">⚙️ Settings</button>
         </div>
       </div>
     `;
   }
 
+  static formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   /**
    * Create summary card
    */
   static createSummaryCard(section, index) {
+    const activityCount = section.activities ? section.activities.length : 0;
+    const badge = activityCount > 0
+      ? `<div class="summary-activity-badge">${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}</div>`
+      : '';
+    const nights = calcNights(section.startDate, section.endDate);
+    const nightsLabel = nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : '— nights';
+    const arrival   = UIComponents.formatDate(section.startDate);
+    const departure = UIComponents.formatDate(section.endDate);
     return `
       <div class="summary-card" id="card-${section.id}" onclick="selectSegment(${section.id}, ${index + 1})">
         <div class="summary-number">${index + 1}</div>
         <div class="summary-dest">${section.name}</div>
-        <div class="summary-days">${section.nights} nights</div>
-        <div class="summary-highlights">${section.highlights}</div>
+        <div class="summary-date-row">
+          <span class="summary-date-label">Arrival</span>
+          <span class="summary-date-value">${arrival}</span>
+        </div>
+        <div class="summary-date-row">
+          <span class="summary-date-label">Departure</span>
+          <span class="summary-date-value">${departure}</span>
+        </div>
+        <div class="summary-nights">${nightsLabel}</div>
+        ${badge}
       </div>
     `;
   }
@@ -51,30 +71,78 @@ class UIComponents {
   /**
    * Create activity card
    */
-  static createActivityCard(activity, index) {
+  static createActivityCard(activity, index, itemNumber) {
+    const priority = activity.priority || 1;
+    const num = itemNumber || 1;
+
+    // Support both old durationValue/durationUnit and new durationHrs/durationMins
+    let durationHrs, durationMins;
+    if (activity.durationHrs !== undefined || activity.durationMins !== undefined) {
+      durationHrs = activity.durationHrs || 0;
+      durationMins = activity.durationMins || 0;
+    } else if (activity.durationValue) {
+      if (activity.durationUnit === 'hrs') {
+        durationHrs = activity.durationValue; durationMins = 0;
+      } else {
+        durationHrs = Math.floor(activity.durationValue / 60);
+        durationMins = activity.durationValue % 60;
+      }
+    } else {
+      durationHrs = 1; durationMins = 0;
+    }
+
+    const priorityOptions = [1, 2, 3, 4, 5].map(p =>
+      `<option value="${p}" ${priority === p ? 'selected' : ''}>${p}</option>`
+    ).join('');
+
     return `
       <div class="activity-card">
-        <div class="activity-time-row">
-          <span class="time-label">🕐 Time</span>
-          <input type="time" class="activity-time-input" value="${activity.time}" onchange="updateActivity(${index}, 'time', this.value)">
-          <button class="btn-small" onclick="removeActivity(${index})">×</button>
+
+        <div class="activity-title-row">
+          <span class="activity-item-num">${num}</span>
+          <span class="activity-title-label">TITLE</span>
+          <input type="text" class="activity-title-input" value="${activity.title}"
+                 placeholder="Activity title" onchange="updateActivity(${index}, 'title', this.value)">
+          <button class="btn-remove-activity" onclick="removeActivity(${index})">×</button>
         </div>
-        
-        <div class="activity-field">
-          <label class="field-label">Title</label>
-          <input type="text" class="activity-title-input" value="${activity.title}" placeholder="Activity title" onchange="updateActivity(${index}, 'title', this.value)">
+
+        <div class="activity-meta-row">
+          <div class="activity-meta-group">
+            <span class="meta-label">🕐 TIME</span>
+            <input type="time" class="activity-time-input" value="${activity.time}"
+                   onchange="updateActivity(${index}, 'time', this.value)">
+          </div>
+          <div class="activity-meta-group">
+            <span class="meta-label">⏱ DURATION</span>
+            <div class="duration-hm-group">
+              <input type="number" class="activity-dur-num" value="${durationHrs}" min="0" max="23"
+                     placeholder="0" onchange="updateActivity(${index}, 'durationHrs', parseInt(this.value)||0)">
+              <span class="dur-unit-label">HRS</span>
+              <input type="number" class="activity-dur-num" value="${durationMins}" min="0" max="59"
+                     placeholder="0" onchange="updateActivity(${index}, 'durationMins', parseInt(this.value)||0)">
+              <span class="dur-unit-label">MINS</span>
+            </div>
+          </div>
+          <div class="activity-meta-group">
+            <span class="meta-label">★ PRIORITY</span>
+            <select class="activity-priority-select" onchange="updatePriority(${index}, parseInt(this.value))">
+              ${priorityOptions}
+            </select>
+          </div>
         </div>
-        
+
         <div class="activity-field">
           <label class="field-label">Notes</label>
-          <textarea class="activity-notes-input" placeholder="Notes about this activity" onchange="updateActivity(${index}, 'notes', this.value)">${activity.notes}</textarea>
+          <textarea class="activity-notes-input" placeholder="Notes about this activity"
+                    onchange="updateActivity(${index}, 'notes', this.value)">${activity.notes}</textarea>
         </div>
-        
+
         <div class="activity-field">
           <label class="field-label">Location</label>
-          <input type="text" class="activity-search" placeholder="🔍 Search location on Google Maps" onchange="searchMapLocation(${index}, this.value)">
+          <input type="text" class="activity-search" placeholder="🔍 Search location on Google Maps"
+                 onchange="searchMapLocation(${index}, this.value)">
         </div>
-        
+
         <div class="activity-actions">
           <button class="btn-map-link" onclick="goToMap(${index})">📍 View on map</button>
         </div>

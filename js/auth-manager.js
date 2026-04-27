@@ -53,11 +53,14 @@ window.AuthManager = (function() {
    * Authenticate user
    */
   function authenticate(username, password, rememberMe = false) {
-    const credentials = loadCredentials();
-    const user = credentials.find(c => c.username === username && c.password === password);
-
-    if (!user) {
-      return { success: false, message: 'Invalid username or password' };
+    // Always check hardcoded defaults first so factory credentials always work
+    const defaultMatch = DEFAULT_CREDENTIALS.find(c => c.username === username && c.password === password);
+    if (!defaultMatch) {
+      const credentials = loadCredentials();
+      const user = credentials.find(c => c.username === username && c.password === password);
+      if (!user) {
+        return { success: false, message: 'Invalid username or password' };
+      }
     }
 
     const authData = {

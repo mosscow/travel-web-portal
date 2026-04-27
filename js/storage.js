@@ -1,21 +1,67 @@
 // STORAGE.JS - Local storage management
 
 class Storage {
-  /**
-   * Save trip data
-   * @param {object} data - Trip data
-   */
   static saveTripData(data) {
-    localStorage.setItem(CONFIG.STORAGE_KEYS.TRIP_DATA, JSON.stringify(data));
+    if (data && data.id) {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.TRIP_PREFIX + data.id, JSON.stringify(data));
+    } else {
+      localStorage.setItem(CONFIG.STORAGE_KEYS.TRIP_DATA, JSON.stringify(data));
+    }
   }
 
-  /**
-   * Load trip data
-   * @returns {object} - Trip data
-   */
   static loadTripData() {
+    const activeId = Storage.getActiveTripId();
+    if (activeId) {
+      const data = localStorage.getItem(CONFIG.STORAGE_KEYS.TRIP_PREFIX + activeId);
+      if (data) return JSON.parse(data);
+    }
     const data = localStorage.getItem(CONFIG.STORAGE_KEYS.TRIP_DATA);
     return data ? JSON.parse(data) : null;
+  }
+
+  static saveTrip(trip) {
+    localStorage.setItem(CONFIG.STORAGE_KEYS.TRIP_PREFIX + trip.id, JSON.stringify(trip));
+  }
+
+  static loadTrip(id) {
+    const data = localStorage.getItem(CONFIG.STORAGE_KEYS.TRIP_PREFIX + id);
+    return data ? JSON.parse(data) : null;
+  }
+
+  static getTripsList() {
+    const data = localStorage.getItem(CONFIG.STORAGE_KEYS.TRIPS_LIST);
+    return data ? JSON.parse(data) : [];
+  }
+
+  static saveTripsList(list) {
+    localStorage.setItem(CONFIG.STORAGE_KEYS.TRIPS_LIST, JSON.stringify(list));
+  }
+
+  static getActiveTripId() {
+    return localStorage.getItem(CONFIG.STORAGE_KEYS.ACTIVE_TRIP_ID);
+  }
+
+  static setActiveTripId(id) {
+    localStorage.setItem(CONFIG.STORAGE_KEYS.ACTIVE_TRIP_ID, String(id));
+  }
+
+  // Migrate legacy single-trip data to the new per-trip storage format
+  static migrateLegacyData() {
+    const existing = Storage.getTripsList();
+    if (existing.length > 0) return null;
+
+    const legacy = localStorage.getItem(CONFIG.STORAGE_KEYS.TRIP_DATA);
+    if (!legacy) return null;
+
+    const trip = JSON.parse(legacy);
+    if (!trip.id) trip.id = Date.now();
+    if (!trip.budget) {
+      trip.budget = { total: 0, currency: 'AUD', categories: { accommodation: 0, flights: 0, food: 0, activities: 0, transport: 0, other: 0 } };
+    }
+    Storage.saveTrip(trip);
+    Storage.saveTripsList([{ id: trip.id, title: trip.title, destination: trip.destination }]);
+    Storage.setActiveTripId(trip.id);
+    return trip;
   }
 
   /**
