@@ -77,6 +77,7 @@ function initSettings() {
         </div>
         <div class="settings-actions">
           <button class="settings-btn" onclick="saveTelegramConfig()">Save</button>
+          <button class="settings-btn settings-btn-info" onclick="fetchTelegramChatId()" title="Send /start to your bot first, then click this">Get Chat ID</button>
           <button class="settings-btn settings-btn-success" onclick="testTelegramConnection()">Test</button>
           <div id="telegramMessage" class="settings-msg-wrap"></div>
         </div>
@@ -224,6 +225,44 @@ async function testTelegramConnection() {
       msgEl.innerHTML = showMessage(`✅ Connected! Test message sent via @${botName}`, 'success');
     } else {
       msgEl.innerHTML = showMessage(`Token valid but message failed: ${sendData.description}`, 'error');
+    }
+  } catch (err) {
+    msgEl.innerHTML = showMessage('Connection error: ' + err.message, 'error');
+  }
+}
+
+/**
+ * Auto-detect the user's chat ID from recent bot messages via getUpdates
+ */
+async function fetchTelegramChatId() {
+  const token = document.getElementById('telegramToken').value.trim();
+  const msgEl = document.getElementById('telegramMessage');
+
+  if (!token) {
+    msgEl.innerHTML = showMessage('Enter your bot token first', 'error');
+    return;
+  }
+
+  msgEl.innerHTML = showMessage('Looking for your chat ID — make sure you\'ve sent /start to your bot in Telegram first…', 'info');
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates`);
+    const data = await res.json();
+
+    if (!data.ok) {
+      msgEl.innerHTML = showMessage('Token error: ' + (data.description || 'Unknown error'), 'error');
+      return;
+    }
+
+    const updates = (data.result || []).slice().reverse();
+    const userMsg = updates.find(u => u.message && u.message.from && !u.message.from.is_bot);
+
+    if (userMsg) {
+      const chatId = String(userMsg.message.chat.id);
+      document.getElementById('telegramChatId').value = chatId;
+      msgEl.innerHTML = showMessage(`✅ Chat ID found: ${chatId} — click Save then Test to confirm.`, 'success');
+    } else {
+      msgEl.innerHTML = showMessage('No messages found. Open Telegram, send /start to your bot, then click Get Chat ID again.', 'error');
     }
   } catch (err) {
     msgEl.innerHTML = showMessage('Connection error: ' + err.message, 'error');
