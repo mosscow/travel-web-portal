@@ -1,7 +1,7 @@
-// API.JS - Claude API Integration using CORS Proxy
+// API.JS - Claude API Integration using Vercel Proxy
 
 /**
- * Call Claude API through CORS proxy (no Vercel config needed)
+ * Call Claude API through Vercel proxy
  */
 async function callClaudeAPI(messages, options = {}) {
   const apiKey = localStorage.getItem(CONFIG.STORAGE_KEYS.CLAUDE_API_KEY);
@@ -19,32 +19,31 @@ async function callClaudeAPI(messages, options = {}) {
   const temperature = localStorage.getItem('temperature') || '0.7';
 
   try {
-    console.log('Calling Claude API directly with CORS bypass');
+    console.log('Calling Vercel proxy at /api/claude');
     
-    // Call Claude API directly with proper headers
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call through Vercel proxy
+    const response = await fetch('/api/claude', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        messages: messages,
         model: model,
-        max_tokens: parseInt(maxTokens),
-        temperature: parseFloat(temperature),
-        messages: messages
+        max_tokens: maxTokens,
+        temperature: temperature,
+        apiKey: apiKey
       })
     });
 
-    console.log('Response status:', response.status);
+    console.log('Proxy response status:', response.status);
     const data = await response.json();
-    console.log('Response data:', data);
+    console.log('Proxy response data:', data);
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error?.message || data.error || 'Claude API request failed',
+        error: data.error || 'Claude API request failed',
         errorCode: data.error?.type || 'API_ERROR',
         details: data
       };
@@ -163,4 +162,4 @@ function clearTravelAgentHistory() {
   localStorage.removeItem('travel_agent_history');
 }
 
-console.log('✅ API module loaded - calling Claude API directly');
+console.log('✅ API module loaded - using Vercel proxy at /api/claude');
