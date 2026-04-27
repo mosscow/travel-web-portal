@@ -71,6 +71,7 @@ window.AuthManager = (function() {
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(authData));
     }
 
+    console.log('User authenticated:', username);
     return { success: true, message: 'Login successful', user: username };
   }
 
@@ -118,40 +119,18 @@ window.AuthManager = (function() {
   }
 
   /**
-   * Get current page filename
-   */
-  function getCurrentPageFilename() {
-    const pathname = window.location.pathname;
-    const filename = pathname.split('/').pop() || 'index.html';
-    return filename || 'index.html';
-  }
-
-  /**
-   * Initialize on page load (NO IMMEDIATE REDIRECTS)
+   * Initialize - just load credentials, NO redirects!
    */
   function init() {
     initializeCredentials();
     console.log('✅ AuthManager initialized');
-    console.log('Current user:', getCurrentUser());
-    console.log('Current page:', getCurrentPageFilename());
-    
-    // ONLY redirect if on auth page AND authenticated
-    const isAuthenticated = getCurrentUser() !== null;
-    const currentPage = getCurrentPageFilename();
-    
-    if (currentPage === 'auth.html' && isAuthenticated) {
-      console.log('User authenticated but on auth page - redirecting to app');
-      setTimeout(() => {
-        window.location.replace('index.html');
-      }, 500);
-    }
   }
 
-  // Initialize when document is ready
+  // Initialize on load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    setTimeout(init, 100);
+    init();
   }
 
   // Public API
@@ -166,4 +145,4 @@ window.AuthManager = (function() {
   };
 })();
 
-console.log('✅ AuthManager module loaded');
+console.log('✅ AuthManager module loaded - NO automatic redirects');
