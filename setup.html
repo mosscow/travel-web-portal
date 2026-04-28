@@ -235,9 +235,6 @@
       if (status === 200 && data.success) {
         // API success — mark setup complete locally and create a session.
         window.AuthManager.completeSetup();
-        window.AuthManager.disableDefault('admin');
-        window.AuthManager.disableDefault('demo');
-        // Authenticate via API to get a proper session
         await window.AuthManager.authenticate(username, password, false);
         showSuccess();
         return;
@@ -249,30 +246,14 @@
         return;
       }
 
-      if (status !== 503 && status !== 0) {
-        // Unexpected API error
-        showError(data.error || 'Server error — please try again.');
+      if (status === 503 || status === 0) {
+        showError('Server not reachable — make sure Vercel KV environment variables (KV_REST_API_URL, KV_REST_API_TOKEN, AUTH_SALT) are configured in your Vercel project dashboard, then redeploy.');
         btn.disabled = false;
         return;
       }
 
-      // ── 503 / network error — API not configured, fall back to localStorage ─
-      console.warn('Users API unavailable — using localStorage fallback for setup');
-      const credentials = window.AuthManager.loadCredentials();
-      if (credentials.find(c => c.username === username)) {
-        showError('Username "' + username + '" is already taken — choose another.');
-        btn.disabled = false;
-        return;
-      }
-      credentials.push({ username, password });
-      window.AuthManager.saveCredentials(credentials);
-      window.AuthManager.disableDefault('admin');
-      window.AuthManager.disableDefault('demo');
-      window.AuthManager.completeSetup();
-      localStorage.removeItem('travel-portal-auth');
-      sessionStorage.removeItem('travel-portal-auth-session');
-      await window.AuthManager.authenticate(username, password, false);
-      showSuccess();
+      showError(data.error || 'Server error — please try again.');
+      btn.disabled = false;
     }
 
     function showSuccess() {

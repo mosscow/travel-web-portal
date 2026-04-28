@@ -1032,39 +1032,29 @@ function renderSegmentContent() {
     ? dayActivities.map(({ activity, originalIndex }, i) => UIComponents.createActivityCard(activity, originalIndex, i + 1)).join('')
     : '<div class="itinerary-empty">No activities for this day yet. Click + Add activity to get started.</div>';
 
-  document.getElementById('accommodationContent').innerHTML = segment.accommodations
-    .map(a => `
-      <div style="background:var(--color-background-secondary);padding:1rem;border-radius:4px;margin-bottom:0.75rem;border:0.5px solid var(--color-border-tertiary);">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
-          <div>
-            <div style="font-weight:500;font-size:13px;color:var(--color-text-primary);">${a.name}</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);">${a.checkIn} to ${a.checkOut}</div>
-          </div>
-          <div style="font-size:12px;color:var(--color-text-info);font-weight:500;">${a.cost}</div>
-        </div>
-      </div>
-    `)
-    .join('');
+  renderAccommodationContent(segment);
 
   document.getElementById('mapActivitiesContent').innerHTML = segment.activities
     .map((a, idx) => `
-      <div class="map-item">
-        <div class="map-item-time">${a.time}</div>
+      <div class="map-item" id="map-item-activity-${idx}"
+           onclick="focusMapMarker('activity',${idx})" style="cursor:pointer;">
+        <div class="map-item-time">${a.time || ''}</div>
         <div class="map-item-title">${a.title}</div>
         <div class="map-item-badge">📌 Pin ${idx + 1}</div>
       </div>
     `)
-    .join('');
+    .join('') || '<div style="color:#aaa;font-size:12px;padding:0.5rem;">No activities yet.</div>';
 
   document.getElementById('mapAccommodationContent').innerHTML = segment.accommodations
     .map((acc, idx) => `
-      <div class="map-item">
+      <div class="map-item" id="map-item-accommodation-${idx}"
+           onclick="focusMapMarker('accommodation',${idx})" style="cursor:pointer;">
         <div class="map-item-title">${acc.name}</div>
-        <div class="map-item-subtitle">${acc.checkIn} to ${acc.checkOut}</div>
+        <div class="map-item-subtitle">${acc.checkIn || ''} ${acc.checkOut ? '→ ' + acc.checkOut : ''}</div>
         <div class="map-item-badge">🏨 Hotel ${idx + 1}</div>
       </div>
     `)
-    .join('');
+    .join('') || '<div style="color:#aaa;font-size:12px;padding:0.5rem;">No accommodation yet.</div>';
 }
 
 function switchSegmentTab(tabIndex) {
@@ -1412,19 +1402,7 @@ function updateFlightStatus(idx, value) {
   renderFlights();
 }
 
-// ─── Accommodation / Transport (Coming Soon) ──────────────────────────────────
-
-function addAccommodation() {
-  const btn = document.querySelector('#segTab-1 .btn-add');
-  const content = document.getElementById('accommodationContent');
-  if (content && !content.querySelector('.coming-soon-notice')) {
-    const notice = document.createElement('div');
-    notice.className = 'coming-soon-notice';
-    notice.textContent = 'Full accommodation tracking is coming soon — log booking costs in the Budget tab for now.';
-    content.appendChild(notice);
-  }
-  if (btn) { btn.disabled = true; btn.textContent = 'Coming soon'; }
-}
+// ─── Transport (Coming Soon) ──────────────────────────────────────────────────
 
 function addTransport() {
   const btn = document.querySelector('#segTab-2 .btn-add');
@@ -1438,8 +1416,124 @@ function addTransport() {
   if (btn) { btn.disabled = true; btn.textContent = 'Coming soon'; }
 }
 
-function goToMap(idx) {
+function goToMap(type, idx) {
+  // If map tab is not yet active, set a pending focus and switch
+  if (typeof focusMapMarker === 'function') {
+    _pendingFocusType = type;
+    _pendingFocusIdx  = idx;
+  }
   switchSegmentTab(3);
+}
+
+// ─── Accommodation ────────────────────────────────────────────────────────────
+
+function renderAccommodationContent(segment) {
+  const container = document.getElementById('accommodationContent');
+  if (!container) return;
+
+  if (!segment.accommodations || segment.accommodations.length === 0) {
+    container.innerHTML = '<div class="itinerary-empty">No accommodation added yet. Click + Add accommodation to get started.</div>';
+    return;
+  }
+
+  container.innerHTML = segment.accommodations.map((a, idx) => buildAccommodationCard(a, idx)).join('');
+}
+
+function buildAccommodationCard(a, idx) {
+  const esc = s => UIComponents.escapeHtml(s || '');
+  return `
+    <div class="accom-card" id="accom-card-${idx}">
+      <div class="accom-card-header">
+        <span class="accom-item-num">${idx + 1}</span>
+        <input type="text" class="accom-name-input" value="${esc(a.name)}"
+               placeholder="Property name" onchange="updateAccommodation(${idx},'name',this.value)">
+        <button class="btn-remove-activity" onclick="removeAccommodation(${idx})">×</button>
+      </div>
+
+      <div class="accom-dates-row">
+        <div class="accom-date-group">
+          <label class="field-label">Check-in</label>
+          <input type="date" class="accom-date-input" value="${esc(a.checkIn)}"
+                 onchange="updateAccommodation(${idx},'checkIn',this.value)">
+        </div>
+        <div class="accom-date-group">
+          <label class="field-label">Check-out</label>
+          <input type="date" class="accom-date-input" value="${esc(a.checkOut)}"
+                 onchange="updateAccommodation(${idx},'checkOut',this.value)">
+        </div>
+        <div class="accom-date-group">
+          <label class="field-label">Cost</label>
+          <input type="text" class="accom-cost-input" value="${esc(a.cost)}"
+                 placeholder="e.g. $250/night" onchange="updateAccommodation(${idx},'cost',this.value)">
+        </div>
+      </div>
+
+      <div class="activity-field">
+        <label class="field-label">Location</label>
+        <div class="location-search-wrap">
+          <input type="text"
+                 id="loc-input-accommodation-${idx}"
+                 class="activity-search"
+                 placeholder="🔍 Search property location"
+                 value="${esc(a.location)}"
+                 oninput="locationSearchInput(this,'accommodation',${idx})"
+                 onblur="closeLocationDropdown('loc-drop-accommodation-${idx}')">
+          <div class="location-dropdown" id="loc-drop-accommodation-${idx}"></div>
+        </div>
+      </div>
+
+      <div class="activity-field">
+        <label class="field-label">Booking URL</label>
+        <input type="text" class="activity-search" value="${esc(a.url)}"
+               placeholder="https://booking.com/..." onchange="updateAccommodation(${idx},'url',this.value)">
+      </div>
+
+      <div class="activity-field">
+        <label class="field-label">Notes</label>
+        <textarea class="activity-notes-input" placeholder="Check-in instructions, parking, contact..."
+                  onchange="updateAccommodation(${idx},'notes',this.value)">${esc(a.notes)}</textarea>
+      </div>
+
+      <div class="activity-actions">
+        <button class="btn-map-link" onclick="goToMap('accommodation',${idx})">📍 View on map</button>
+      </div>
+    </div>`;
+}
+
+function addAccommodation() {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment) return;
+  if (!segment.accommodations) segment.accommodations = [];
+  segment.accommodations.push({
+    id: Date.now(),
+    name: '',
+    checkIn: '',
+    checkOut: '',
+    cost: '',
+    url: '',
+    location: '',
+    notes: '',
+  });
+  renderAccommodationContent(segment);
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator('Accommodation added');
+}
+
+function removeAccommodation(idx) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.accommodations) return;
+  segment.accommodations.splice(idx, 1);
+  renderAccommodationContent(segment);
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator('Accommodation removed');
+}
+
+function updateAccommodation(idx, field, value) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.accommodations || !segment.accommodations[idx]) return;
+  segment.accommodations[idx][field] = value;
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator();
 }
 
 // ─── Import ───────────────────────────────────────────────────────────────────

@@ -1113,6 +1113,109 @@
   opacity: 0.9;
 }
 
+/* LOCATION SEARCH DROPDOWN */
+.location-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.location-search-wrap .activity-search {
+  margin-bottom: 0;
+}
+
+.location-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-info);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.loc-suggestion {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  line-height: 1.4;
+}
+
+.loc-suggestion:last-child { border-bottom: none; }
+.loc-suggestion:hover { background: var(--color-background-info); color: var(--color-text-info); }
+
+/* ACCOMMODATION CARDS */
+.accom-card {
+  background: var(--color-background-secondary);
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 0.75rem;
+  border: 0.5px solid var(--color-border-tertiary);
+}
+
+.accom-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.accom-item-num {
+  background: #764ba2;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.accom-name-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+.accom-dates-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.accom-date-group {
+  flex: 1;
+  min-width: 130px;
+}
+
+.accom-date-input,
+.accom-cost-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  margin-top: 4px;
+}
+
 /* MAP TAB */
 .map-container {
   display: grid;

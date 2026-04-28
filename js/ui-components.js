@@ -140,12 +140,20 @@ class UIComponents {
 
         <div class="activity-field">
           <label class="field-label">Location</label>
-          <input type="text" class="activity-search" placeholder="🔍 Search location on Google Maps"
-                 onchange="searchMapLocation(${index}, this.value)">
+          <div class="location-search-wrap">
+            <input type="text"
+                   id="loc-input-activity-${index}"
+                   class="activity-search"
+                   placeholder="🔍 Search location on Google Maps"
+                   value="${this.escapeHtml(activity.location || '')}"
+                   oninput="locationSearchInput(this,'activity',${index})"
+                   onblur="closeLocationDropdown('loc-drop-activity-${index}')">
+            <div class="location-dropdown" id="loc-drop-activity-${index}"></div>
+          </div>
         </div>
 
         <div class="activity-actions">
-          <button class="btn-map-link" onclick="goToMap(${index})">📍 View on map</button>
+          <button class="btn-map-link" onclick="goToMap('activity',${index})">📍 View on map</button>
         </div>
       </div>
     `;

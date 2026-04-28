@@ -3,34 +3,20 @@
 /**
  * AuthManager - Handles user authentication and session management
  *
- * Auth model (two distinct phases):
+ * Auth model (API-only — no localStorage credential storage):
  *
- *  PRE-SETUP  (checkSetupComplete() resolves false)
- *    If the API is reachable and has zero users → show setup.html.
- *    If the API is unreachable (503) and localStorage has no setup flag →
- *    only DEFAULT_CREDENTIALS (admin/travel2027, demo/demo123) are accepted
- *    as a bootstrap path so the owner can reach setup.html.
+ *   All credential checks go through POST /api/users { action: 'auth' }.
+ *   Sessions are stored in sessionStorage (default) or localStorage (rememberMe).
  *
- *  POST-SETUP  (checkSetupComplete() resolves true)
- *    The API is the authoritative credential store.
- *    If the API is unreachable (503), localStorage credentials are used as
- *    a local fallback — the hardcoded defaults are never accepted in this
- *    phase regardless of the fallback path.
+ *   If the API is unreachable (503 / network error) the user sees an error.
+ *   There is no localStorage credential fallback.
  *
  * All public methods that touch the network return Promises.
- * Legacy callers that used the old synchronous authenticate() must now await.
  */
 window.AuthManager = (function() {
-  const STORAGE_KEY           = 'travel-portal-auth';
-  const SESSION_STORAGE_KEY   = 'travel-portal-auth-session';
-  const CREDENTIALS_KEY       = 'travel-portal-credentials';
-  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults';
-  const SETUP_KEY             = 'travel-portal-setup-complete';
-
-  const DEFAULT_CREDENTIALS = [
-    { username: 'admin', password: 'travel2027' },
-    { username: 'demo',  password: 'demo123'    },
-  ];
+  const STORAGE_KEY         = 'travel-portal-auth';
+  const SESSION_STORAGE_KEY = 'travel-portal-auth-session';
+  const SETUP_KEY           = 'travel-portal-setup-complete';
 
   // ── Users API helper ─────────────────────────────────────────────────────────
 
@@ -57,7 +43,7 @@ window.AuthManager = (function() {
   // ── Session helpers ──────────────────────────────────────────────────────────
 
   function createSession(username, rememberMe, role) {
-    const authData = { username, role: role || 'admin', timestamp: new Date().getTime() };
+    const authData = { username, role: role || 'user', timestamp: new Date().getTime() };
     if (rememberMe) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
     } else {
@@ -66,31 +52,9 @@ window.AuthManager = (function() {
     console.log('✅ Session created for:', username, '| role:', authData.role);
   }
 
-  // ── Credential storage (localStorage fallback) ────────────────────────────────
-
-  function loadCredentials() {
-    try {
-      const data = localStorage.getItem(CREDENTIALS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      console.error('Error loading credentials:', e);
-      return [];
-    }
-  }
-
-  function saveCredentials(credentials) {
-    try {
-      localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
-      return true;
-    } catch (e) {
-      console.error('Error saving credentials:', e);
-      return false;
-    }
-  }
-
   // ── Setup state ──────────────────────────────────────────────────────────────
 
-  /** Synchronous localStorage check — use as a fast cache only. */
+  /** Synchronous localStorage check — used as a fast cache. */
   function isSetupComplete() {
     return localStorage.getItem(SETUP_KEY) === 'true';
   }
@@ -101,88 +65,33 @@ window.AuthManager = (function() {
 
   /**
    * Async setup check — authoritative.
-   * Returns true if:
-   *   (a) localStorage already has the flag, OR
-   *   (b) the API reports at least one user exists.
-   *
-   * Side-effect: caches the result in localStorage so subsequent
-   * synchronous isSetupComplete() calls return the right answer.
+   * Returns true if the API reports at least one user exists.
+   * Side-effect: caches the result in localStorage.
    */
   async function checkSetupComplete() {
     if (isSetupComplete()) return true;
 
     const { status, data } = await callUsersAPI('GET');
     if (status === 200 && data.users && data.users.length > 0) {
-      completeSetup(); // cache for this device
+      completeSetup();
       return true;
     }
     return false;
   }
 
-  // ── Disabled-defaults list (Settings UI only) ────────────────────────────────
-
-  function getDisabledDefaults() {
-    try {
-      const data = localStorage.getItem(DISABLED_DEFAULTS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function setDisabledDefaults(list) {
-    try {
-      localStorage.setItem(DISABLED_DEFAULTS_KEY, JSON.stringify(list));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function disableDefault(username) {
-    const list = getDisabledDefaults();
-    if (!list.includes(username)) {
-      list.push(username);
-      setDisabledDefaults(list);
-    }
-    const credentials = loadCredentials();
-    saveCredentials(credentials.filter(c => c.username !== username));
-  }
-
-  function enableDefault(username) {
-    setDisabledDefaults(getDisabledDefaults().filter(u => u !== username));
-    const original = DEFAULT_CREDENTIALS.find(c => c.username === username);
-    if (original) {
-      const credentials = loadCredentials();
-      if (!credentials.find(c => c.username === username)) {
-        credentials.push({ username: original.username, password: original.password });
-        saveCredentials(credentials);
-      }
-    }
-  }
-
   // ── Core authentication ──────────────────────────────────────────────────────
 
   /**
-   * Authenticate a user.  Always returns a Promise.
-   *
-   * Strategy:
-   *   1. Try POST /api/users { action: 'auth' }
-   *      • 200 success  → create session, return success
-   *      • 401          → credentials wrong, return failure
-   *      • 503 / 0      → KV not configured, fall through to localStorage
-   *   2. localStorage fallback:
-   *      • Pre-setup    → only DEFAULT_CREDENTIALS accepted (bootstrap access)
-   *      • Post-setup   → only localStorage credentials accepted
+   * Authenticate a user against the server API.
+   * Returns { success, message, user?, role? }
    */
   async function authenticate(username, password, rememberMe = false) {
-    // ── 1. Try API ───────────────────────────────────────────────────────────
     const { status, data } = await callUsersAPI('POST', {
       action: 'auth', username, password
     });
 
     if (status === 200 && data.success) {
-      completeSetup(); // ensure device-local flag is set
+      completeSetup();
       createSession(username, rememberMe, data.role);
       return { success: true, message: 'Login successful', user: username, role: data.role };
     }
@@ -191,37 +100,14 @@ window.AuthManager = (function() {
       return { success: false, message: 'Invalid username or password' };
     }
 
-    // ── 2. API unavailable (503 or network error) — local fallback ───────────
-    console.warn('Users API unavailable (status', status, ') — falling back to localStorage auth');
-
-    if (!isSetupComplete()) {
-      // Pre-setup bootstrap: allow factory defaults through
-      const defaultMatch = DEFAULT_CREDENTIALS.find(
-        c => c.username === username && c.password === password
-      );
-      if (defaultMatch) {
-        createSession(username, rememberMe, 'admin'); // bootstrap defaults are always admin
-        return { success: true, message: 'Login successful', user: username, role: 'admin' };
-      }
-      return { success: false, message: 'Invalid username or password' };
+    if (status === 503 || status === 0) {
+      return {
+        success: false,
+        message: 'Server unavailable — check that Vercel KV environment variables are configured.',
+      };
     }
 
-    // Post-setup local fallback: localStorage credentials only
-    const credentials = loadCredentials();
-    const user = credentials.find(
-      c => c.username === username && c.password === password
-    );
-    if (!user) {
-      return { success: false, message: 'Invalid username or password' };
-    }
-    createSession(username, rememberMe, 'admin'); // localStorage fallback — treat as admin (no role info)
-
-    // Fire-and-forget: silently sync this localStorage user to KV so they
-    // become available cross-device next time they log in from any device.
-    callUsersAPI('POST', { action: 'sync', username, password })
-      .then(function(r) { if (r.status === 200 && r.data.synced) console.log('✅ Synced to KV:', username); })
-      .catch(function() {}); // never block login on sync failure
-    return { success: true, message: 'Login successful', user: username, role: 'admin' };
+    return { success: false, message: data.error || 'Login failed. Please try again.' };
   }
 
   // ── Session queries ──────────────────────────────────────────────────────────
@@ -240,8 +126,7 @@ window.AuthManager = (function() {
 
   /**
    * Return the role stored in the current session ('admin' | 'user').
-   * Defaults to 'admin' for sessions created before role-storage was added
-   * (backward-compatible — existing users keep full access).
+   * Defaults to 'admin' for sessions created before role-storage was added.
    */
   function getCurrentUserRole() {
     try {
@@ -279,26 +164,15 @@ window.AuthManager = (function() {
 
   // Public API
   return {
-    // Auth
     authenticate,
     getCurrentUser,
     getCurrentUserRole,
     isAuthenticated,
     logout,
-    // Setup state
     isSetupComplete,
     completeSetup,
     checkSetupComplete,
-    // API access (used by settings.js and setup.html)
     callUsersAPI,
-    // Local-storage credential management (fallback / offline)
-    loadCredentials,
-    saveCredentials,
-    // Built-in default account helpers
-    getDisabledDefaults,
-    disableDefault,
-    enableDefault,
-    DEFAULT_USERNAMES: DEFAULT_CREDENTIALS.map(c => c.username),
   };
 })();
 

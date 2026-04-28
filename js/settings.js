@@ -452,25 +452,12 @@ async function changePassword() {
     msgEl.innerHTML = showMessage('Current password is incorrect.', 'error');
     return;
   }
-  if (status !== 503 && status !== 0) {
-    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
+  if (status === 503 || status === 0) {
+    msgEl.innerHTML = showMessage('Server unavailable — please try again shortly.', 'error');
     return;
   }
 
-  // ── API unavailable — localStorage fallback ───────────────────────────────
-  const credentials = window.AuthManager.loadCredentials() || [];
-  const userCred = credentials.find(c => c.username === currentUser);
-
-  if (!userCred || userCred.password !== currentPassword) {
-    msgEl.innerHTML = showMessage('Current password is incorrect.', 'error');
-    return;
-  }
-  userCred.password = newPassword;
-  if (window.AuthManager.saveCredentials(credentials)) {
-    msgEl.innerHTML = showMessage('Password updated for "' + currentUser + '"!', 'success');
-  } else {
-    msgEl.innerHTML = showMessage('Error updating password', 'error');
-  }
+  msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
 }
 
 /**
@@ -504,30 +491,19 @@ async function renderUserList() {
 
   container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">Loading users…</div>';
 
-  const currentUser       = window.AuthManager.getCurrentUser();
-  const DEFAULT_USERNAMES = window.AuthManager.DEFAULT_USERNAMES || ['admin', 'demo'];
-  const disabledDefaults  = window.AuthManager.getDisabledDefaults();
+  const currentUser = window.AuthManager.getCurrentUser();
 
-  // ── Try API ────────────────────────────────────────────────────────────────
   const { status, data } = await window.AuthManager.callUsersAPI('GET');
 
-  let allRows; // [{ username, role?, createdAt?, _disabledDefault? }]
-
-  if (status === 200 && Array.isArray(data.users)) {
-    // Server list — these are the authoritative accounts
-    allRows = data.users.map(u => ({ username: u.username, role: u.role, createdAt: u.createdAt }));
-  } else {
-    // Fallback to localStorage credentials list
-    console.warn('Users API unavailable — rendering localStorage user list');
-    const credentials = window.AuthManager.loadCredentials() || [];
-    allRows = [...credentials];
-    // Also show disabled built-ins that aren't in the creds list
-    DEFAULT_USERNAMES.forEach(u => {
-      if (disabledDefaults.includes(u) && !allRows.find(c => c.username === u)) {
-        allRows.push({ username: u, _disabledDefault: true });
-      }
-    });
+  if (status !== 200 || !Array.isArray(data.users)) {
+    const msg = (status === 503 || status === 0)
+      ? 'Server unavailable — configure Vercel KV environment variables to manage users.'
+      : (data.error || 'Could not load user list.');
+    container.innerHTML = `<div style="color:#888;font-size:13px;padding:0.5rem 0;">${msg}</div>`;
+    return;
   }
+
+  const allRows = data.users;
 
   // Show or hide the Create User section based on whether current user is admin
   const currentUserRow  = allRows.find(u => u.username === currentUser);
@@ -542,42 +518,25 @@ async function renderUserList() {
     return;
   }
 
-  container.innerHTML = allRows.map(cred => {
-    const isCurrentUser = cred.username === currentUser;
-    const isBuiltIn     = DEFAULT_USERNAMES.includes(cred.username);
-    const isDisabled    = disabledDefaults.includes(cred.username);
-    const isAdmin       = cred.role === 'admin';
+  container.innerHTML = allRows.map(u => {
+    const isCurrentUser = u.username === currentUser;
+    const isAdmin       = u.role === 'admin';
 
     let badge = '';
     if (isCurrentUser) badge += ' <span class="user-badge user-badge-you">you</span>';
-    if (isAdmin)        badge += ' <span class="user-badge user-badge-builtin">admin</span>';
-    if (isBuiltIn && !isAdmin) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
-    if (isDisabled)     badge += ' <span class="user-badge user-badge-disabled">disabled</span>';
-    if (cred.createdAt) {
-      const d = new Date(cred.createdAt);
+    if (isAdmin)       badge += ' <span class="user-badge user-badge-builtin">admin</span>';
+    if (u.createdAt) {
+      const d = new Date(u.createdAt);
       badge += ' <span style="font-size:10px;color:#aaa;margin-left:4px;">joined ' + d.toLocaleDateString() + '</span>';
     }
 
-    let actions = '';
-    if (isBuiltIn && !isAdmin) {
-      // Built-in accounts: toggle enable/disable
-      if (isDisabled) {
-        actions = `<button class="settings-btn settings-btn-success settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', true)">Enable</button>`;
-      } else {
-        actions = !isCurrentUser
-          ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', false)">Disable</button>`
-          : `<button class="settings-btn settings-btn-sm" disabled title="Can't disable your own account">Disable</button>`;
-      }
-    } else if (!isBuiltIn || isAdmin) {
-      // Normal or admin accounts from the API: delete (not yourself)
-      actions = !isCurrentUser
-        ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${cred.username}')">Delete</button>`
-        : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
-    }
+    const actions = !isCurrentUser
+      ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${u.username}')">Delete</button>`
+      : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
 
     return `
-      <div class="user-list-row${isDisabled ? ' user-list-row-disabled' : ''}">
-        <span class="user-list-name">${cred.username}${badge}</span>
+      <div class="user-list-row">
+        <span class="user-list-name">${u.username}${badge}</span>
         <div style="display:flex;gap:6px;">${actions}</div>
       </div>`;
   }).join('');
@@ -626,45 +585,12 @@ async function createUser() {
     msgEl.innerHTML = showMessage(data.error || 'Username "' + username + '" already exists', 'error');
     return;
   }
-  if (status !== 503 && status !== 0) {
-    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
+  if (status === 503 || status === 0) {
+    msgEl.innerHTML = showMessage('Server unavailable — please configure Vercel KV environment variables.', 'error');
     return;
   }
 
-  // ── 503 / network error — localStorage fallback ────────────────────────────
-  console.warn('Users API unavailable — creating user in localStorage');
-  const credentials = window.AuthManager.loadCredentials() || [];
-  if (credentials.find(c => c.username === username)) {
-    msgEl.innerHTML = showMessage('Username "' + username + '" already exists', 'error');
-    return;
-  }
-  credentials.push({ username, password });
-  if (window.AuthManager.saveCredentials(credentials)) {
-    usernameEl.value = '';
-    passwordEl.value = '';
-    msgEl.innerHTML  = showMessage('User "' + username + '" created (local only — server not configured).', 'success');
-    renderUserList();
-  } else {
-    msgEl.innerHTML = showMessage('Error saving user — please try again', 'error');
-  }
-}
-
-/**
- * Enable or disable a built-in default account
- */
-function toggleDefaultAccount(username, enable) {
-  const msgEl = document.getElementById('userMessage');
-  if (!window.AuthManager) return;
-
-  if (enable) {
-    window.AuthManager.enableDefault(username);
-    msgEl.innerHTML = showMessage(`Built-in account "${username}" re-enabled. Default password restored.`, 'success');
-  } else {
-    if (!confirm(`Disable built-in account "${username}"?\n\nThis will block the hardcoded login for this account. Make sure you have another admin account you can log in with.`)) return;
-    window.AuthManager.disableDefault(username);
-    msgEl.innerHTML = showMessage(`Built-in account "${username}" disabled.`, 'success');
-  }
-  renderUserList();
+  msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
 }
 
 /**
@@ -696,21 +622,12 @@ async function deleteUser(username) {
     msgEl.innerHTML = showMessage('User "' + username + '" not found on server.', 'error');
     return;
   }
-  if (status !== 503 && status !== 0) {
-    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
+  if (status === 503 || status === 0) {
+    msgEl.innerHTML = showMessage('Server unavailable — please try again shortly.', 'error');
     return;
   }
 
-  // ── 503 / network error — localStorage fallback ────────────────────────────
-  console.warn('Users API unavailable — deleting user from localStorage');
-  const credentials = window.AuthManager.loadCredentials() || [];
-  const updated     = credentials.filter(c => c.username !== username);
-  if (window.AuthManager.saveCredentials(updated)) {
-    msgEl.innerHTML = showMessage('User "' + username + '" deleted (local only).', 'success');
-    renderUserList();
-  } else {
-    msgEl.innerHTML = showMessage('Error deleting user', 'error');
-  }
+  msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
 }
 
 /**
