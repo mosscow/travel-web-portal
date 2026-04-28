@@ -163,13 +163,7 @@
       if (result.success) {
         messageEl.textContent = 'Login successful! Redirecting...';
         messageEl.className = 'message success';
-        setTimeout(() => {
-          if (window.AuthManager.isSetupComplete()) {
-            window.location.href = 'index.html';
-          } else {
-            window.location.href = 'setup.html';
-          }
-        }, 500);
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
       } else {
         messageEl.textContent = 'Invalid username or password';
         messageEl.className = 'message error';
@@ -194,9 +188,14 @@
       }
     }
 
-    // Check if already logged in
-    if (window.AuthManager && window.AuthManager.isAuthenticated()) {
-      window.location.href = window.AuthManager.isSetupComplete() ? 'index.html' : 'setup.html';
+    if (window.AuthManager) {
+      if (!window.AuthManager.isSetupComplete()) {
+        // No real accounts exist yet — go straight to first-time setup.
+        // The login form is not useful until at least one account has been created.
+        window.location.href = 'setup.html';
+      } else if (window.AuthManager.isAuthenticated()) {
+        window.location.href = 'index.html';
+      }
     }
   </script>
 </body>

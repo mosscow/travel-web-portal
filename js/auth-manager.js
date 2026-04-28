@@ -2,101 +2,55 @@
 
 /**
  * AuthManager - Handles user authentication and session management
+ *
+ * Auth model (two distinct phases):
+ *
+ *  PRE-SETUP  (isSetupComplete() === false)
+ *    Only DEFAULT_CREDENTIALS (admin/travel2027, demo/demo123) are accepted.
+ *    This gives first-time access to the setup page so a real account can be
+ *    created.  No localStorage credentials are checked in this phase.
+ *
+ *  POST-SETUP  (isSetupComplete() === true)
+ *    ONLY localStorage credentials are accepted.  The hardcoded defaults are
+ *    completely ignored — no bypass possible regardless of disabled-defaults
+ *    flags or credential list state.
  */
 window.AuthManager = (function() {
-  const STORAGE_KEY = 'travel-portal-auth';
-  const SESSION_STORAGE_KEY = 'travel-portal-auth-session';
-  const CREDENTIALS_KEY = 'travel-portal-credentials';
-  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults';
-  const SETUP_KEY = 'travel-portal-setup-complete';
+  const STORAGE_KEY          = 'travel-portal-auth';
+  const SESSION_STORAGE_KEY  = 'travel-portal-auth-session';
+  const CREDENTIALS_KEY      = 'travel-portal-credentials';
+  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults'; // kept for Settings UI
+  const SETUP_KEY            = 'travel-portal-setup-complete';
+
   const DEFAULT_CREDENTIALS = [
     { username: 'admin', password: 'travel2027' },
-    { username: 'demo', password: 'demo123' }
+    { username: 'demo',  password: 'demo123'    },
   ];
 
-  /**
-   * Get the list of disabled default usernames
-   */
-  function getDisabledDefaults() {
+  // ── Session helpers ──────────────────────────────────────────────────────────
+
+  function createSession(username, rememberMe) {
+    const authData = { username, timestamp: new Date().getTime() };
+    if (rememberMe) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
+    } else {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(authData));
+    }
+    console.log('✅ Session created for:', username);
+  }
+
+  // ── Credential storage ───────────────────────────────────────────────────────
+
+  function loadCredentials() {
     try {
-      const data = localStorage.getItem(DISABLED_DEFAULTS_KEY);
+      const data = localStorage.getItem(CREDENTIALS_KEY);
       return data ? JSON.parse(data) : [];
     } catch (e) {
+      console.error('Error loading credentials:', e);
       return [];
     }
   }
 
-  /**
-   * Save the list of disabled default usernames
-   */
-  function setDisabledDefaults(list) {
-    try {
-      localStorage.setItem(DISABLED_DEFAULTS_KEY, JSON.stringify(list));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /**
-   * Disable a built-in default account (hardcode bypass will be skipped)
-   */
-  function disableDefault(username) {
-    const list = getDisabledDefaults();
-    if (!list.includes(username)) {
-      list.push(username);
-      setDisabledDefaults(list);
-    }
-    // Also remove from stored credentials so they don't appear in the list
-    const credentials = loadCredentials();
-    const updated = credentials.filter(c => c.username !== username);
-    saveCredentials(updated);
-  }
-
-  /**
-   * Re-enable a built-in default account (restores hardcode bypass + re-adds to credential list)
-   */
-  function enableDefault(username) {
-    const list = getDisabledDefaults().filter(u => u !== username);
-    setDisabledDefaults(list);
-    // Re-add to credential list with the original default password
-    const original = DEFAULT_CREDENTIALS.find(c => c.username === username);
-    if (original) {
-      const credentials = loadCredentials();
-      if (!credentials.find(c => c.username === username)) {
-        credentials.push({ username: original.username, password: original.password });
-        saveCredentials(credentials);
-      }
-    }
-  }
-
-  /**
-   * Initialize credentials if not exists
-   */
-  function initializeCredentials() {
-    const existing = localStorage.getItem(CREDENTIALS_KEY);
-    if (!existing) {
-      localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(DEFAULT_CREDENTIALS));
-    }
-  }
-
-  /**
-   * Load credentials from storage
-   */
-  function loadCredentials() {
-    try {
-      initializeCredentials();
-      const data = localStorage.getItem(CREDENTIALS_KEY);
-      return data ? JSON.parse(data) : DEFAULT_CREDENTIALS;
-    } catch (e) {
-      console.error('Error loading credentials:', e);
-      return DEFAULT_CREDENTIALS;
-    }
-  }
-
-  /**
-   * Save credentials to storage
-   */
   function saveCredentials(credentials) {
     try {
       localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
@@ -107,116 +61,134 @@ window.AuthManager = (function() {
     }
   }
 
+  // ── Setup state ──────────────────────────────────────────────────────────────
+
+  function isSetupComplete() {
+    return localStorage.getItem(SETUP_KEY) === 'true';
+  }
+
+  function completeSetup() {
+    localStorage.setItem(SETUP_KEY, 'true');
+  }
+
+  // ── Disabled-defaults list (Settings UI only — not used in authenticate()) ───
+
+  function getDisabledDefaults() {
+    try {
+      const data = localStorage.getItem(DISABLED_DEFAULTS_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function setDisabledDefaults(list) {
+    try {
+      localStorage.setItem(DISABLED_DEFAULTS_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
-   * Authenticate user
+   * Disable a built-in default account.
+   * Post-setup this is cosmetic only (hardcode bypass is already fully disabled).
+   * Still removes the account from the credentials list so it doesn't appear in Settings.
    */
-  function authenticate(username, password, rememberMe = false) {
-    const disabledDefaults = getDisabledDefaults();
+  function disableDefault(username) {
+    const list = getDisabledDefaults();
+    if (!list.includes(username)) {
+      list.push(username);
+      setDisabledDefaults(list);
+    }
     const credentials = loadCredentials();
-    const storedUser = credentials.find(c => c.username === username);
+    saveCredentials(credentials.filter(c => c.username !== username));
+  }
 
-    // Hardcode bypass applies ONLY if ALL of these are true:
-    //  1. Username matches a DEFAULT_CREDENTIALS entry
-    //  2. Password matches the ORIGINAL default password
-    //  3. The account has NOT been explicitly disabled
-    //  4. The password has NOT been changed in localStorage (i.e. the stored
-    //     password still matches the factory default — user hasn't taken ownership)
-    const defaultCred = DEFAULT_CREDENTIALS.find(c => c.username === username);
-    const passwordCustomised = storedUser && defaultCred && storedUser.password !== defaultCred.password;
-
-    const defaultMatch = defaultCred &&
-      defaultCred.password === password &&
-      !disabledDefaults.includes(username) &&
-      !passwordCustomised;
-
-    if (!defaultMatch) {
-      // Fall through to localStorage credentials only
-      if (!storedUser || storedUser.password !== password) {
-        return { success: false, message: 'Invalid username or password' };
+  /**
+   * Re-enable a built-in default account.
+   * Re-adds it to the credential list with the original default password.
+   * Users can then change the password via Settings if they want to keep it.
+   */
+  function enableDefault(username) {
+    setDisabledDefaults(getDisabledDefaults().filter(u => u !== username));
+    const original = DEFAULT_CREDENTIALS.find(c => c.username === username);
+    if (original) {
+      const credentials = loadCredentials();
+      if (!credentials.find(c => c.username === username)) {
+        credentials.push({ username: original.username, password: original.password });
+        saveCredentials(credentials);
       }
     }
+  }
 
-    const authData = {
-      username: username,
-      timestamp: new Date().getTime()
-    };
+  // ── Core authentication ──────────────────────────────────────────────────────
 
-    if (rememberMe) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
-    } else {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(authData));
+  /**
+   * Authenticate a user.
+   *
+   * PRE-SETUP:  only DEFAULT_CREDENTIALS accepted (bootstrap access).
+   * POST-SETUP: only localStorage credentials accepted (hardcode fully disabled).
+   */
+  function authenticate(username, password, rememberMe = false) {
+    if (!isSetupComplete()) {
+      // ── Pre-setup bootstrap ──────────────────────────────────────────────────
+      // Allow the factory defaults through so the owner can reach setup.html.
+      const defaultMatch = DEFAULT_CREDENTIALS.find(
+        c => c.username === username && c.password === password
+      );
+      if (defaultMatch) {
+        createSession(username, rememberMe);
+        return { success: true, message: 'Login successful', user: username };
+      }
+      return { success: false, message: 'Invalid username or password' };
     }
 
-    console.log('User authenticated:', username);
+    // ── Post-setup: localStorage credentials only ────────────────────────────
+    // DEFAULT_CREDENTIALS are completely ignored here — no bypass possible.
+    const credentials = loadCredentials();
+    const user = credentials.find(
+      c => c.username === username && c.password === password
+    );
+    if (!user) {
+      return { success: false, message: 'Invalid username or password' };
+    }
+
+    createSession(username, rememberMe);
     return { success: true, message: 'Login successful', user: username };
   }
 
-  /**
-   * Get current user
-   */
+  // ── Session queries ──────────────────────────────────────────────────────────
+
   function getCurrentUser() {
-    // Check sessionStorage first (highest priority)
-    const sessionAuth = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (sessionAuth) {
-      try {
-        return JSON.parse(sessionAuth).username;
-      } catch (e) {
-        console.error('Error parsing session auth:', e);
-      }
-    }
-
-    // Check localStorage
-    const persistentAuth = localStorage.getItem(STORAGE_KEY);
-    if (persistentAuth) {
-      try {
-        return JSON.parse(persistentAuth).username;
-      } catch (e) {
-        console.error('Error parsing persistent auth:', e);
-      }
-    }
-
+    try {
+      const session = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (session) return JSON.parse(session).username;
+    } catch (e) { /* ignore */ }
+    try {
+      const persistent = localStorage.getItem(STORAGE_KEY);
+      if (persistent) return JSON.parse(persistent).username;
+    } catch (e) { /* ignore */ }
     return null;
   }
 
-  /**
-   * Check if user is authenticated
-   */
   function isAuthenticated() {
     return getCurrentUser() !== null;
   }
 
-  /**
-   * Logout current user
-   */
   function logout() {
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY);
     window.location.href = 'auth.html';
   }
 
-  /**
-   * Check whether the first-run setup has been completed
-   */
-  function isSetupComplete() {
-    return localStorage.getItem(SETUP_KEY) === 'true';
-  }
+  // ── Init ─────────────────────────────────────────────────────────────────────
 
-  /**
-   * Mark first-run setup as complete
-   */
-  function completeSetup() {
-    localStorage.setItem(SETUP_KEY, 'true');
-  }
-
-  /**
-   * Initialize - just load credentials, NO redirects!
-   */
   function init() {
-    initializeCredentials();
-    console.log('✅ AuthManager initialized');
+    console.log('✅ AuthManager initialized — setup complete:', isSetupComplete());
   }
 
-  // Initialize on load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
@@ -225,20 +197,19 @@ window.AuthManager = (function() {
 
   // Public API
   return {
-    authenticate: authenticate,
-    getCurrentUser: getCurrentUser,
-    isAuthenticated: isAuthenticated,
-    logout: logout,
-    loadCredentials: loadCredentials,
-    saveCredentials: saveCredentials,
-    getDisabledDefaults: getDisabledDefaults,
-    disableDefault: disableDefault,
-    enableDefault: enableDefault,
-    isSetupComplete: isSetupComplete,
-    completeSetup: completeSetup,
+    authenticate,
+    getCurrentUser,
+    isAuthenticated,
+    logout,
+    loadCredentials,
+    saveCredentials,
+    isSetupComplete,
+    completeSetup,
+    getDisabledDefaults,
+    disableDefault,
+    enableDefault,
     DEFAULT_USERNAMES: DEFAULT_CREDENTIALS.map(c => c.username),
-    init: init
   };
 })();
 
-console.log('✅ AuthManager module loaded - NO automatic redirects');
+console.log('✅ AuthManager module loaded');

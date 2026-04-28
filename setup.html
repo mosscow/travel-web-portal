@@ -133,8 +133,7 @@
 
     <div class="setup-body">
       <div class="setup-intro">
-        The built-in <strong>admin</strong> account is for first-time access only.
-        Create your own account below — admin will be disabled automatically once you log in with it.
+        Create your account to get started. You'll be logged in automatically once it's set up.
       </div>
 
       <div id="setupMessage" class="message"></div>
@@ -172,16 +171,12 @@
   <script src="js/auth-manager.js"></script>
 
   <script>
-    // Guard: must be authenticated (as admin bootstrap) to reach this page
+    // Setup page is intentionally accessible WITHOUT prior login.
+    // It is the mechanism by which the first user account is created.
+    // If setup is already done, send the user to the login page.
     (function() {
-      const authData = localStorage.getItem('travel-portal-auth') ||
-                       sessionStorage.getItem('travel-portal-auth-session');
-      if (!authData) {
-        window.location.href = 'auth.html';
-        return;
-      }
       if (window.AuthManager && window.AuthManager.isSetupComplete()) {
-        window.location.href = 'index.html';
+        window.location.href = 'auth.html';
       }
     })();
 
@@ -242,24 +237,27 @@
       credentials.push({ username, password });
       window.AuthManager.saveCredentials(credentials);
 
-      // Disable both built-in accounts — bootstrap no longer needed
+      // Disable both built-in bootstrap accounts (cosmetic — the hardcode bypass
+      // is fully disabled the moment completeSetup() is called below anyway)
       window.AuthManager.disableDefault('admin');
       window.AuthManager.disableDefault('demo');
 
-      // Mark setup done
+      // Mark setup complete BEFORE authenticate() so the post-setup code path
+      // is used (localStorage credentials only, no hardcode bypass).
       window.AuthManager.completeSetup();
 
-      // Clear the bootstrap admin session — user must log in as themselves
+      // Clear any leftover session then log straight in — no round-trip to login.
       localStorage.removeItem('travel-portal-auth');
       sessionStorage.removeItem('travel-portal-auth-session');
+      window.AuthManager.authenticate(username, password, false);
 
       msgEl.className   = 'message success';
-      msgEl.textContent = 'Account created! Please log in with your new credentials.';
+      msgEl.textContent = 'Account created! Taking you to the app…';
       document.getElementById('createBtn').disabled = true;
 
       setTimeout(() => {
-        window.location.href = 'auth.html?setup=done';
-      }, 1200);
+        window.location.href = 'index.html';
+      }, 800);
     }
 
     function showError(text) {
