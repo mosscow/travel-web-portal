@@ -1792,6 +1792,20 @@ function refreshTransportUrlBtn(idx) {
   }
 }
 
+function refreshActivityUrlBtn(idx) {
+  const input = document.getElementById(`activity-url-${idx}`);
+  const btn   = document.getElementById(`activity-url-btn-${idx}`);
+  if (!input || !btn) return;
+  const url = input.value.trim();
+  if (url) {
+    btn.href = url;
+    btn.classList.remove('btn-booking-link--hidden');
+  } else {
+    btn.href = '#';
+    btn.classList.add('btn-booking-link--hidden');
+  }
+}
+
 function refreshAccomUrlBtn(idx) {
   const input = document.getElementById(`accom-url-${idx}`);
   const btn   = document.getElementById(`accom-url-btn-${idx}`);

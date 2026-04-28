@@ -139,6 +139,21 @@ class UIComponents {
         </div>
 
         <div class="activity-field">
+          <label class="field-label">Booking URL</label>
+          <div class="booking-url-wrap">
+            <input type="text" class="activity-search booking-url-input"
+                   id="activity-url-${index}"
+                   placeholder="https://viator.com/..."
+                   value="${this.escapeHtml(activity.bookingUrl || '')}"
+                   oninput="updateActivity(${index},'bookingUrl',this.value); refreshActivityUrlBtn(${index})">
+            <a class="btn-booking-link${activity.bookingUrl ? '' : ' btn-booking-link--hidden'}"
+               id="activity-url-btn-${index}"
+               href="${this.escapeHtml(activity.bookingUrl || '#')}"
+               target="_blank" rel="noopener">🔗 Open</a>
+          </div>
+        </div>
+
+        <div class="activity-field">
           <label class="field-label">Location</label>
           <div class="location-search-wrap">
             <input type="text"
