@@ -8,6 +8,7 @@ window.AuthManager = (function() {
   const SESSION_STORAGE_KEY = 'travel-portal-auth-session';
   const CREDENTIALS_KEY = 'travel-portal-credentials';
   const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults';
+  const SETUP_KEY = 'travel-portal-setup-complete';
   const DEFAULT_CREDENTIALS = [
     { username: 'admin', password: 'travel2027' },
     { username: 'demo', password: 'demo123' }
@@ -111,14 +112,26 @@ window.AuthManager = (function() {
    */
   function authenticate(username, password, rememberMe = false) {
     const disabledDefaults = getDisabledDefaults();
-    // Check hardcoded defaults only if not disabled
-    const defaultMatch = DEFAULT_CREDENTIALS.find(
-      c => c.username === username && c.password === password && !disabledDefaults.includes(c.username)
-    );
+    const credentials = loadCredentials();
+    const storedUser = credentials.find(c => c.username === username);
+
+    // Hardcode bypass applies ONLY if ALL of these are true:
+    //  1. Username matches a DEFAULT_CREDENTIALS entry
+    //  2. Password matches the ORIGINAL default password
+    //  3. The account has NOT been explicitly disabled
+    //  4. The password has NOT been changed in localStorage (i.e. the stored
+    //     password still matches the factory default — user hasn't taken ownership)
+    const defaultCred = DEFAULT_CREDENTIALS.find(c => c.username === username);
+    const passwordCustomised = storedUser && defaultCred && storedUser.password !== defaultCred.password;
+
+    const defaultMatch = defaultCred &&
+      defaultCred.password === password &&
+      !disabledDefaults.includes(username) &&
+      !passwordCustomised;
+
     if (!defaultMatch) {
-      const credentials = loadCredentials();
-      const user = credentials.find(c => c.username === username && c.password === password);
-      if (!user) {
+      // Fall through to localStorage credentials only
+      if (!storedUser || storedUser.password !== password) {
         return { success: false, message: 'Invalid username or password' };
       }
     }
@@ -182,6 +195,20 @@ window.AuthManager = (function() {
   }
 
   /**
+   * Check whether the first-run setup has been completed
+   */
+  function isSetupComplete() {
+    return localStorage.getItem(SETUP_KEY) === 'true';
+  }
+
+  /**
+   * Mark first-run setup as complete
+   */
+  function completeSetup() {
+    localStorage.setItem(SETUP_KEY, 'true');
+  }
+
+  /**
    * Initialize - just load credentials, NO redirects!
    */
   function init() {
@@ -207,6 +234,8 @@ window.AuthManager = (function() {
     getDisabledDefaults: getDisabledDefaults,
     disableDefault: disableDefault,
     enableDefault: enableDefault,
+    isSetupComplete: isSetupComplete,
+    completeSetup: completeSetup,
     DEFAULT_USERNAMES: DEFAULT_CREDENTIALS.map(c => c.username),
     init: init
   };

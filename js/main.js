@@ -45,9 +45,9 @@ function initApp() {
         </div>
       </div>
 
-      <div id="plannerMainView">
-        <div class="trip-summary-bar" id="tripSummaryBar"></div>
+      <div class="trip-info-tile" id="tripSummaryBar"></div>
 
+      <div id="plannerMainView">
         <div class="trip-summary-section">
           <div class="summary-grid" id="summaryGrid"></div>
           <button class="btn-add-section" onclick="addSection()">+ Add Section</button>
@@ -236,22 +236,50 @@ function renderTripSummaryBar() {
   if (!bar) return;
 
   const sections = TRIP_DATA.sections || [];
-  const totalNights = sections.reduce((sum, s) => sum + calcNights(s.startDate, s.endDate), 0);
-  const starts = sections.map(s => s.startDate).filter(Boolean).sort();
-  const ends   = sections.map(s => s.endDate).filter(Boolean).sort();
-  const startDate = starts[0] || '';
-  const endDate   = ends[ends.length - 1] || '';
 
   if (sections.length === 0) {
     bar.innerHTML = '';
+    bar.style.display = 'none';
     return;
   }
 
+  bar.style.display = 'flex';
+
+  const totalNights = sections.reduce((sum, s) => sum + calcNights(s.startDate, s.endDate), 0);
+  const starts  = sections.map(s => s.startDate).filter(Boolean).sort();
+  const ends    = sections.map(s => s.endDate).filter(Boolean).sort();
+  const startDate = starts[0] || '';
+  const endDate   = ends[ends.length - 1] || '';
+
+  // Budget allocated total from line items
+  const items = (TRIP_DATA.budget && TRIP_DATA.budget.items) || [];
+  const budgetTotal = items.reduce((sum, item) => sum + (parseFloat(item.totalAmount) || 0), 0);
+  const currency = (TRIP_DATA.budget && TRIP_DATA.budget.currency) || 'AUD';
+  const budgetStr = budgetTotal > 0
+    ? `${currency} ${budgetTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+    : '—';
+
+  const dateRange = (startDate && endDate)
+    ? `${UIComponents.formatDate(startDate)} → ${UIComponents.formatDate(endDate)}`
+    : '—';
+
   bar.innerHTML = `
-    ${UIComponents.createInfoStat('Trip Starts', UIComponents.formatDate(startDate))}
-    ${UIComponents.createInfoStat('Trip Finishes', UIComponents.formatDate(endDate))}
-    ${UIComponents.createInfoStat('Total Nights', totalNights)}
-    ${UIComponents.createInfoStat('Destinations', sections.length)}
+    <div class="trip-info-stat">
+      <span class="trip-info-label">Dates</span>
+      <span class="trip-info-value">${dateRange}</span>
+    </div>
+    <div class="trip-info-stat">
+      <span class="trip-info-label">Nights</span>
+      <span class="trip-info-value">${totalNights}</span>
+    </div>
+    <div class="trip-info-stat">
+      <span class="trip-info-label">Destinations</span>
+      <span class="trip-info-value">${sections.length}</span>
+    </div>
+    <div class="trip-info-stat">
+      <span class="trip-info-label">Budget</span>
+      <span class="trip-info-value">${budgetStr}</span>
+    </div>
   `;
 }
 
@@ -580,6 +608,7 @@ function saveBudget() {
 function updateBudgetSummary() {
   const b = TRIP_DATA.budget;
   if (!b) return;
+  renderTripSummaryBar(); // keep tile in sync when budget changes
   const total    = b.total || 0;
   const currency = b.currency || 'AUD';
   const items    = b.items || [];

@@ -1,14 +1,43 @@
 /* TRIP PLANNER STYLES */
 
-/* ── Trip Summary Bar (rollup stats) ───────────────── */
+/* ── Trip Info Tile (compact stat strip) ─────────────── */
 
-.trip-summary-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 1rem 1.5rem;
-  background: var(--color-background-secondary);
+.trip-info-tile {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 1.5rem;
+  background: var(--color-background-primary);
   border-bottom: 0.5px solid var(--color-border-tertiary);
+  flex-wrap: wrap;
+}
+
+.trip-info-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 16px 3px 0;
+  margin-right: 16px;
+  border-right: 0.5px solid var(--color-border-tertiary);
+  font-size: 12px;
+}
+
+.trip-info-stat:last-child {
+  border-right: none;
+  margin-right: 0;
+  padding-right: 0;
+}
+
+.trip-info-label {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.trip-info-value {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── Trip Selector Bar ──────────────────────────────── */

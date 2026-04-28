@@ -139,10 +139,8 @@
       <div id="message" class="message"></div>
     </form>
 
-    <div class="demo-creds">
-      <strong>Demo Credentials:</strong><br>
-      Username: <strong>admin</strong> &nbsp; Password: <strong>travel2027</strong><br>
-      <a href="#" onclick="localStorage.removeItem('travel-portal-credentials'); location.reload(); return false;" style="font-size:11px;color:#1976D2;display:inline-block;margin-top:8px;">Having trouble? Reset credentials</a>
+    <div class="demo-creds" id="resetHint" style="display:none;">
+      <a href="#" onclick="resetCredentials(); return false;" style="font-size:11px;color:#1976D2;">Forgot your password? Reset all credentials</a>
     </div>
   </div>
 
@@ -166,18 +164,32 @@
         messageEl.textContent = 'Login successful! Redirecting...';
         messageEl.className = 'message success';
         setTimeout(() => {
-          window.location.href = 'index.html';
+          if (window.AuthManager.isSetupComplete()) {
+            window.location.href = 'index.html';
+          } else {
+            window.location.href = 'setup.html';
+          }
         }, 500);
       } else {
         messageEl.textContent = 'Invalid username or password';
         messageEl.className = 'message error';
         document.getElementById('password').value = '';
+        document.getElementById('resetHint').style.display = 'block';
       }
     });
 
+    function resetCredentials() {
+      if (confirm('This will reset ALL credentials back to factory defaults (admin/travel2027).\n\nYou will need to go through first-time setup again. Continue?')) {
+        localStorage.removeItem('travel-portal-credentials');
+        localStorage.removeItem('travel-portal-disabled-defaults');
+        localStorage.removeItem('travel-portal-setup-complete');
+        location.reload();
+      }
+    }
+
     // Check if already logged in
     if (window.AuthManager && window.AuthManager.isAuthenticated()) {
-      window.location.href = 'index.html';
+      window.location.href = window.AuthManager.isSetupComplete() ? 'index.html' : 'setup.html';
     }
   </script>
 </body>
