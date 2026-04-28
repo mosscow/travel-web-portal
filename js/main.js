@@ -1850,6 +1850,11 @@ function buildTransportCard(t, idx) {
           <input type="time" class="transport-meta-input" value="${esc(endTime)}"
                  onchange="updateTransport(${idx},'endTime',this.value); refreshTransportTravelTime(${idx})">
         </div>
+      </div>
+
+      <div class="transport-travel-time-row" id="transport-tt-${idx}">${travelTimeHtml}</div>
+
+      <div class="transport-meta-row">
         <div class="transport-meta-group">
           <label class="field-label">Cost (${getLocalCurrency()})</label>
           <input type="number" class="transport-meta-input" value="${parseTransportCost(t.cost) || ''}"
@@ -1863,8 +1868,6 @@ function buildTransportCard(t, idx) {
                  placeholder="Booking ref" onchange="updateTransport(${idx},'bookingRef',this.value)">
         </div>
       </div>
-
-      <div class="transport-travel-time-row" id="transport-tt-${idx}">${travelTimeHtml}</div>
 
       <div class="activity-field">
         <label class="field-label">Booking URL</label>
