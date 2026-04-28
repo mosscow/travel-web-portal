@@ -1286,6 +1286,49 @@
   flex-wrap: wrap;
 }
 
+.transport-datetime-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.transport-datetime-group {
+  flex: 1;
+  min-width: 110px;
+}
+
+.transport-datetime-sep {
+  align-self: flex-end;
+  padding-bottom: 9px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.transport-travel-time-row {
+  margin-bottom: 10px;
+}
+
+.transport-travel-time {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-background-tertiary, #f5f5f5);
+  border-radius: 4px;
+  padding: 5px 10px;
+  display: inline-block;
+}
+
+.transport-travel-time strong {
+  color: #1976d2;
+}
+
+.transport-travel-time--empty {
+  opacity: 0.55;
+  font-style: italic;
+}
+
 .transport-meta-group {
   flex: 1;
   min-width: 90px;
@@ -1613,6 +1656,86 @@
 }
 
 /* ── Budget Item Cards ───────────────────────────────── */
+
+/* ── Currency Converter ────────────────────────────────── */
+
+.fx-panel {
+  margin: 0 1.5rem 1rem;
+  padding: 12px 14px;
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 6px;
+}
+
+.fx-panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+.fx-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fx-amount {
+  width: 90px;
+  padding: 7px 9px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+.fx-select {
+  padding: 7px 9px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.fx-arrow {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.fx-result {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1976d2;
+  margin-left: 4px;
+  min-width: 80px;
+}
+
+.fx-rates {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fx-rate-item strong { color: var(--color-text-primary); }
+.fx-rate-sep         { color: var(--color-border-tertiary); }
+.fx-rate-source      { opacity: 0.6; }
+.fx-loading          { font-style: italic; }
+.fx-error            { color: #e53935; }
+
+/* ─────────────────────────────────────────────────────── */
 
 .budget-cats-manage {
   display: flex;

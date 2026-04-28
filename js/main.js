@@ -165,6 +165,41 @@ function initApp() {
             <div class="budget-progress-bar-wrap" style="margin:0 1.5rem 1rem;">
               <div class="budget-progress-bar" id="budgetProgressBar" style="width:0%"></div>
             </div>
+            <!-- ── Currency Converter ── -->
+            <div class="fx-panel">
+              <div class="fx-panel-title">💱 Currency Converter</div>
+              <div class="fx-row">
+                <input type="number" id="fxAmount" class="fx-amount" value="100" min="0" oninput="runFxConvert()">
+                <select id="fxFrom" class="fx-select" onchange="runFxConvert()">
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="AUD">AUD</option>
+                  <option value="NZD">NZD</option>
+                  <option value="CAD">CAD</option>
+                  <option value="CHF">CHF</option>
+                  <option value="SGD">SGD</option>
+                  <option value="THB">THB</option>
+                </select>
+                <span class="fx-arrow">→</span>
+                <select id="fxTo" class="fx-select" onchange="runFxConvert()">
+                  <option value="AUD" selected>AUD</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="NZD">NZD</option>
+                  <option value="CAD">CAD</option>
+                  <option value="CHF">CHF</option>
+                  <option value="SGD">SGD</option>
+                  <option value="THB">THB</option>
+                </select>
+                <div id="fxResult" class="fx-result">—</div>
+              </div>
+              <div id="fxRates" class="fx-rates"></div>
+            </div>
+
             <div class="budget-cats-manage">
               <div id="budgetCustomCats" class="budget-custom-cats-list"></div>
               <button class="btn-add-cat" onclick="addBudgetCategory()">＋ Category</button>
@@ -632,9 +667,13 @@ function renderBudget() {
   if (currEl) currEl.value = b.currency || 'AUD';
   const totalEl = document.getElementById('budgetTotal');
   if (totalEl) totalEl.value = b.total || '';
+  // Pre-set converter "To" currency to match budget currency
+  const fxTo = document.getElementById('fxTo');
+  if (fxTo && b.currency) fxTo.value = b.currency;
   renderBudgetCategories();
   renderBudgetItems();
   updateBudgetSummary();
+  runFxConvert();
 }
 
 function saveBudget() {
@@ -1340,6 +1379,78 @@ function exportTripToExcel() {
   showSavedIndicator('Exported to Excel');
 }
 
+// ─── Currency Converter ───────────────────────────────────────────────────────
+
+const _fxCache = {};   // { 'EUR-AUD': { current: 1.62, avg90: 1.60, ts: Date.now() } }
+const FX_TTL = 60 * 60 * 1000; // 1 hour cache
+
+async function fetchFxRates(from, to) {
+  const key = `${from}-${to}`;
+  if (_fxCache[key] && Date.now() - _fxCache[key].ts < FX_TTL) return _fxCache[key];
+
+  try {
+    // Current rate
+    const latestRes = await fetch(`https://api.frankfurter.app/latest?from=${from}&to=${to}`);
+    if (!latestRes.ok) throw new Error('rate fetch failed');
+    const latestJson = await latestRes.json();
+    const current = latestJson.rates[to];
+
+    // 90-day average
+    const end   = new Date();
+    const start = new Date(); start.setDate(start.getDate() - 90);
+    const fmt   = d => d.toISOString().slice(0, 10);
+    const histRes = await fetch(
+      `https://api.frankfurter.app/${fmt(start)}..${fmt(end)}?from=${from}&to=${to}`
+    );
+    let avg90 = current;
+    if (histRes.ok) {
+      const histJson = await histRes.json();
+      const vals = Object.values(histJson.rates || {}).map(r => r[to]).filter(Boolean);
+      if (vals.length > 0) avg90 = vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+
+    _fxCache[key] = { current, avg90, ts: Date.now() };
+    return _fxCache[key];
+  } catch (e) {
+    return null;
+  }
+}
+
+async function runFxConvert() {
+  const amount  = parseFloat(document.getElementById('fxAmount')?.value) || 0;
+  const from    = document.getElementById('fxFrom')?.value;
+  const to      = document.getElementById('fxTo')?.value;
+  const resEl   = document.getElementById('fxResult');
+  const ratesEl = document.getElementById('fxRates');
+  if (!resEl || !ratesEl || !from || !to) return;
+
+  if (from === to) {
+    resEl.textContent = `${amount.toFixed(2)} ${to}`;
+    ratesEl.textContent = '';
+    return;
+  }
+
+  resEl.textContent = '…';
+  ratesEl.innerHTML = '<span class="fx-loading">Loading rates…</span>';
+
+  const data = await fetchFxRates(from, to);
+  if (!data) {
+    resEl.textContent = '—';
+    ratesEl.innerHTML = '<span class="fx-error">Could not load rates</span>';
+    return;
+  }
+
+  const converted = amount * data.current;
+  resEl.textContent = `${converted.toFixed(2)} ${to}`;
+  ratesEl.innerHTML = `
+    <span class="fx-rate-item">Current rate: <strong>1 ${from} = ${data.current.toFixed(4)} ${to}</strong></span>
+    <span class="fx-rate-sep">·</span>
+    <span class="fx-rate-item">90-day avg: <strong>1 ${from} = ${data.avg90.toFixed(4)} ${to}</strong></span>
+    <span class="fx-rate-sep">·</span>
+    <span class="fx-rate-item fx-rate-source">Source: ECB via frankfurter.app</span>
+  `;
+}
+
 // ─── Flights ──────────────────────────────────────────────────────────────────
 
 const FLIGHT_STATUSES = ['Not Booked', 'Searching', 'Booked', 'Confirmed', 'Checked In'];
@@ -1529,6 +1640,20 @@ function renderTransportContent(segment) {
   container.innerHTML = segment.transports.map((t, idx) => buildTransportCard(t, idx)).join('');
 }
 
+function calcTransportDuration(startDate, startTime, endDate, endTime) {
+  if (!startDate || !startTime || !endDate || !endTime) return null;
+  const start = new Date(`${startDate}T${startTime}`);
+  const end   = new Date(`${endDate}T${endTime}`);
+  const diffMs = end - start;
+  if (diffMs <= 0) return null;
+  const totalMins = Math.round(diffMs / 60000);
+  const hrs  = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
+  if (hrs > 0)             return `${hrs}h`;
+  return `${mins}m`;
+}
+
 function buildTransportCard(t, idx) {
   const esc = s => UIComponents.escapeHtml(s || '');
   const modes = typeof TRANSPORT_MODES !== 'undefined' ? TRANSPORT_MODES : [];
@@ -1536,6 +1661,17 @@ function buildTransportCard(t, idx) {
     `<option value="${m.value}" ${t.mode === m.value ? 'selected' : ''}>${m.label}</option>`
   ).join('');
   const icon = typeof getTransportModeIcon === 'function' ? getTransportModeIcon(t.mode) : '🚗';
+
+  // Backward-compat: old records stored date/time instead of startDate/startTime
+  const startDate = t.startDate || t.date || '';
+  const startTime = t.startTime || t.time || '';
+  const endDate   = t.endDate   || '';
+  const endTime   = t.endTime   || '';
+
+  const duration = calcTransportDuration(startDate, startTime, endDate, endTime);
+  const travelTimeHtml = duration
+    ? `<div class="transport-travel-time">⏱ Travel time: <strong>${duration}</strong></div>`
+    : `<div class="transport-travel-time transport-travel-time--empty">⏱ Travel time calculated from start &amp; finish</div>`;
 
   return `
     <div class="transport-card" id="transport-card-${idx}">
@@ -1581,16 +1717,27 @@ function buildTransportCard(t, idx) {
         </div>
       </div>
 
-      <div class="transport-meta-row">
-        <div class="transport-meta-group">
-          <label class="field-label">Date</label>
-          <input type="date" class="transport-meta-input" value="${esc(t.date)}"
-                 onchange="updateTransport(${idx},'date',this.value)">
+      <div class="transport-datetime-row">
+        <div class="transport-datetime-group">
+          <label class="field-label">Start Date</label>
+          <input type="date" class="transport-meta-input" value="${esc(startDate)}"
+                 onchange="updateTransport(${idx},'startDate',this.value); refreshTransportTravelTime(${idx})">
         </div>
-        <div class="transport-meta-group">
-          <label class="field-label">Time</label>
-          <input type="time" class="transport-meta-input" value="${esc(t.time)}"
-                 onchange="updateTransport(${idx},'time',this.value)">
+        <div class="transport-datetime-group">
+          <label class="field-label">Start Time</label>
+          <input type="time" class="transport-meta-input" value="${esc(startTime)}"
+                 onchange="updateTransport(${idx},'startTime',this.value); refreshTransportTravelTime(${idx})">
+        </div>
+        <div class="transport-datetime-sep">→</div>
+        <div class="transport-datetime-group">
+          <label class="field-label">Finish Date</label>
+          <input type="date" class="transport-meta-input" value="${esc(endDate)}"
+                 onchange="updateTransport(${idx},'endDate',this.value); refreshTransportTravelTime(${idx})">
+        </div>
+        <div class="transport-datetime-group">
+          <label class="field-label">Finish Time</label>
+          <input type="time" class="transport-meta-input" value="${esc(endTime)}"
+                 onchange="updateTransport(${idx},'endTime',this.value); refreshTransportTravelTime(${idx})">
         </div>
         <div class="transport-meta-group">
           <label class="field-label">Cost</label>
@@ -1603,6 +1750,8 @@ function buildTransportCard(t, idx) {
                  placeholder="Booking ref" onchange="updateTransport(${idx},'bookingRef',this.value)">
         </div>
       </div>
+
+      <div class="transport-travel-time-row" id="transport-tt-${idx}">${travelTimeHtml}</div>
 
       <div class="activity-field">
         <label class="field-label">Notes</label>
@@ -1618,6 +1767,19 @@ function buildTransportCard(t, idx) {
     </div>`;
 }
 
+function refreshTransportTravelTime(idx) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.transports) return;
+  const t = segment.transports[idx];
+  if (!t) return;
+  const duration = calcTransportDuration(t.startDate, t.startTime, t.endDate, t.endTime);
+  const el = document.getElementById(`transport-tt-${idx}`);
+  if (!el) return;
+  el.innerHTML = duration
+    ? `<div class="transport-travel-time">⏱ Travel time: <strong>${duration}</strong></div>`
+    : `<div class="transport-travel-time transport-travel-time--empty">⏱ Travel time calculated from start &amp; finish</div>`;
+}
+
 function addTransport() {
   const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
   if (!segment) return;
@@ -1628,8 +1790,10 @@ function addTransport() {
     mode: 'rental_car',
     from: '',
     to: '',
-    date: '',
-    time: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
     cost: '',
     bookingRef: '',
     notes: '',
