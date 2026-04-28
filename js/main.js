@@ -795,7 +795,19 @@ function renderBudgetItems() {
     return;
   }
   try {
-    container.innerHTML = items.map((item, i) => buildBudgetItemCard(item, i)).join('');
+    const cur = TRIP_DATA.budget?.currency || 'AUD';
+    const header = `
+      <div class="budget-list-header">
+        <span class="bli-num"></span>
+        <span class="bli-desc">Description</span>
+        <span class="bli-cat">Category</span>
+        <span class="bli-ref">Ref #</span>
+        <span class="bli-amount">Total (${cur})</span>
+        <span class="bli-amount">Deposit</span>
+        <span class="bli-amount">Outstanding</span>
+        <span class="bli-actions"></span>
+      </div>`;
+    container.innerHTML = header + items.map((item, i) => buildBudgetItemCard(item, i)).join('');
   } catch (e) {
     console.error('renderBudgetItems error:', e);
     container.innerHTML = `<div class="budget-items-empty"><div class="budget-empty-text">Error rendering items — check console.</div></div>`;
@@ -811,59 +823,81 @@ function buildBudgetItemCard(item, index) {
   const currency = TRIP_DATA.budget?.currency || 'AUD';
   const fmt = n => Math.round(n).toLocaleString();
   const synced = item._transportSync;
-  const syncBadge = synced ? `<span class="budget-sync-badge" title="Auto-synced from Transport tab">🚌 Transport</span>` : '';
   const ro = synced ? 'readonly disabled' : '';
+  const esc = s => UIComponents.escapeHtml(s || '');
 
   return `
-    <div class="budget-item-card${synced ? ' budget-item-synced' : ''}">
-      <div class="budget-item-header">
-        <span class="budget-item-num">${index + 1}</span>
-        ${syncBadge}
-        <input type="text" class="budget-item-desc" value="${UIComponents.escapeHtml(item.description || '')}"
-               placeholder="Description" ${ro} onchange="updateBudgetItem(${index}, 'description', this.value)">
-        <select class="budget-item-cat" ${ro} onchange="updateBudgetItem(${index}, 'category', this.value)">
+    <div class="budget-item-row${synced ? ' budget-item-synced' : ''}" id="bli-${index}">
+
+      <!-- ── Single compact line ── -->
+      <div class="bli-main">
+        <span class="bli-num">${index + 1}${synced ? '<span class="bli-sync-dot" title="Synced from Transport">🚌</span>' : ''}</span>
+        <input type="text" class="bli-desc" value="${esc(item.description)}"
+               placeholder="Description" ${ro}
+               onchange="updateBudgetItem(${index},'description',this.value)">
+        <select class="bli-cat" ${ro}
+                onchange="updateBudgetItem(${index},'category',this.value)">
           ${catOptions}
         </select>
-        <input type="text" class="budget-item-ref" value="${UIComponents.escapeHtml(item.refNum || '')}"
-               placeholder="Ref #" ${ro} onchange="updateBudgetItem(${index}, 'refNum', this.value)">
-        ${synced ? `<span class="budget-sync-note">Edit in Transport tab</span>` : `<button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>`}
-      </div>
-      <div class="budget-item-dates-row">
-        <div class="budget-date-group">
-          <label class="budget-date-label">Booking Date</label>
-          <input type="date" class="budget-date-input" value="${item.bookingDate || ''}"
-                 onchange="updateBudgetItem(${index}, 'bookingDate', this.value)">
-        </div>
-        <div class="budget-date-group">
-          <label class="budget-date-label">Start Date</label>
-          <input type="date" class="budget-date-input" value="${item.startDate || ''}"
-                 onchange="updateBudgetItem(${index}, 'startDate', this.value)">
-        </div>
-        <div class="budget-date-group">
-          <label class="budget-date-label">End Date</label>
-          <input type="date" class="budget-date-input" value="${item.endDate || ''}"
-                 onchange="updateBudgetItem(${index}, 'endDate', this.value)">
+        <input type="text" class="bli-ref" value="${esc(item.refNum)}"
+               placeholder="Ref #" ${ro}
+               onchange="updateBudgetItem(${index},'refNum',this.value)">
+        <input type="number" class="bli-amount-input" value="${item.totalAmount || ''}"
+               placeholder="0" min="0" ${ro}
+               oninput="updateBudgetItem(${index},'totalAmount',parseFloat(this.value)||0)">
+        <input type="number" class="bli-amount-input deposit-input" value="${item.depositPaid || ''}"
+               placeholder="0" min="0" ${ro}
+               oninput="updateBudgetItem(${index},'depositPaid',parseFloat(this.value)||0)">
+        <span class="bli-outstanding" id="budget-outstanding-${index}">${fmt(outstanding)}</span>
+        <div class="bli-actions">
+          <button class="bli-expand-btn" onclick="toggleBudgetDetails(${index})" title="Details">▾</button>
+          ${synced
+            ? `<span class="bli-sync-note" title="Edit cost in Transport tab">🔒</span>`
+            : `<button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>`}
         </div>
       </div>
-      <div class="budget-item-amounts-row">
-        <div class="budget-amount-group">
-          <label class="budget-amount-label">Total Amount</label>
-          <input type="number" class="budget-amount-input" value="${item.totalAmount || ''}"
-                 placeholder="0" min="0"
-                 oninput="updateBudgetItem(${index}, 'totalAmount', parseFloat(this.value)||0)">
+
+      <!-- ── Expandable details ── -->
+      <div class="bli-details" id="bli-details-${index}" style="display:none;">
+        <div class="bli-details-grid">
+          <div class="bli-detail-group">
+            <label class="bli-detail-label">Booking Date</label>
+            <input type="date" class="bli-detail-input" value="${item.bookingDate || ''}"
+                   onchange="updateBudgetItem(${index},'bookingDate',this.value)">
+          </div>
+          <div class="bli-detail-group">
+            <label class="bli-detail-label">Start Date</label>
+            <input type="date" class="bli-detail-input" value="${item.startDate || ''}"
+                   onchange="updateBudgetItem(${index},'startDate',this.value)">
+          </div>
+          <div class="bli-detail-group">
+            <label class="bli-detail-label">End Date</label>
+            <input type="date" class="bli-detail-input" value="${item.endDate || ''}"
+                   onchange="updateBudgetItem(${index},'endDate',this.value)">
+          </div>
+          <div class="bli-detail-group bli-detail-group--wide">
+            <label class="bli-detail-label">Location</label>
+            <input type="text" class="bli-detail-input" value="${esc(item.location)}"
+                   placeholder="e.g. Rome, Italy"
+                   onchange="updateBudgetItem(${index},'location',this.value)">
+          </div>
         </div>
-        <div class="budget-amount-group">
-          <label class="budget-amount-label">Deposit Paid</label>
-          <input type="number" class="budget-amount-input deposit-input" value="${item.depositPaid || ''}"
-                 placeholder="0" min="0"
-                 oninput="updateBudgetItem(${index}, 'depositPaid', parseFloat(this.value)||0)">
-        </div>
-        <div class="budget-amount-group">
-          <label class="budget-amount-label">Outstanding</label>
-          <div class="budget-outstanding-val" id="budget-outstanding-${index}">${currency} ${fmt(outstanding)}</div>
+        <div class="bli-detail-group bli-notes-group">
+          <label class="bli-detail-label">Notes</label>
+          <textarea class="bli-notes-input" placeholder="Any booking notes, confirmation details…"
+                    onchange="updateBudgetItem(${index},'notes',this.value)">${esc(item.notes)}</textarea>
         </div>
       </div>
     </div>`;
+}
+
+function toggleBudgetDetails(index) {
+  const el = document.getElementById(`bli-details-${index}`);
+  const btn = document.querySelector(`#bli-${index} .bli-expand-btn`);
+  if (!el) return;
+  const open = el.style.display === 'none' || el.style.display === '';
+  el.style.display = open ? 'block' : 'none';
+  if (btn) btn.textContent = open ? '▴' : '▾';
 }
 
 function addBudgetItem() {
