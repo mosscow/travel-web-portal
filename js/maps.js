@@ -154,7 +154,35 @@ async function initSectionMap(segment) {
 
   const city = (segment.name || '').replace(/\(.*?\)/g, '').trim();
 
-  function placeMarker(searchText, label, pinColor, infoTitle, markerStore, storeKey) {
+  /** Build a hotel SVG pin icon for Google Maps */
+  function hotelIcon() {
+    const svg = [
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">',
+      // teardrop pin body
+      '<path d="M16 1C7.7 1 1 7.7 1 16c0 11.5 15 23 15 23S31 27.5 31 16C31 7.7 24.3 1 16 1z"',
+      ' fill="#764ba2" stroke="white" stroke-width="1.5"/>',
+      // building rectangle
+      '<rect x="7" y="8" width="18" height="14" rx="1.5" fill="white"/>',
+      // three windows top row
+      '<rect x="9"  y="11" width="4" height="3" rx="0.5" fill="#764ba2"/>',
+      '<rect x="14" y="11" width="4" height="3" rx="0.5" fill="#764ba2"/>',
+      '<rect x="19" y="11" width="4" height="3" rx="0.5" fill="#764ba2"/>',
+      // door centred
+      '<rect x="13" y="17" width="6" height="5" rx="0.5" fill="#764ba2"/>',
+      '</svg>',
+    ].join('');
+    return {
+      url:        'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(32, 40),
+      anchor:     new google.maps.Point(16, 40),
+    };
+  }
+
+  /**
+   * Geocode searchText, drop a marker and extend bounds.
+   * iconType: 'activity' (numbered circle) | 'accommodation' (hotel SVG pin)
+   */
+  function placeMarker(searchText, label, pinColor, infoTitle, markerStore, storeKey, iconType) {
     return new Promise(resolve => {
       const query = searchText +
         (city && !searchText.toLowerCase().includes(city.toLowerCase())
@@ -164,24 +192,31 @@ async function initSectionMap(segment) {
         if (status === 'OK' && results[0]) {
           const pos = results[0].geometry.location;
 
+          const isHotel = iconType === 'accommodation';
+
           const marker = new google.maps.Marker({
             position: pos,
             map,
             title: infoTitle,
-            icon: {
-              path:        google.maps.SymbolPath.CIRCLE,
-              scale:       11,
-              fillColor:   pinColor,
-              fillOpacity: 1,
-              strokeColor: '#fff',
-              strokeWeight: 2,
-            },
-            label: {
-              text:       label,
-              color:      '#fff',
-              fontSize:   '10px',
-              fontWeight: 'bold',
-            },
+            ...(isHotel
+              ? { icon: hotelIcon() }
+              : {
+                  icon: {
+                    path:        google.maps.SymbolPath.CIRCLE,
+                    scale:       11,
+                    fillColor:   pinColor,
+                    fillOpacity: 1,
+                    strokeColor: '#fff',
+                    strokeWeight: 2,
+                  },
+                  label: {
+                    text:       label,
+                    color:      '#fff',
+                    fontSize:   '10px',
+                    fontWeight: 'bold',
+                  },
+                }
+            ),
           });
 
           const infoWindow = new google.maps.InfoWindow({
@@ -199,15 +234,15 @@ async function initSectionMap(segment) {
     });
   }
 
-  // Activity markers — blue (#1976D2), numbered
+  // Activity markers — blue (#1976D2), numbered circles
   const activityPromises = segment.activities.map((a, idx) => {
     const searchText = (a.location && a.location.trim()) ? a.location.trim() : a.title;
-    return placeMarker(searchText, String(idx + 1), '#1976D2', a.title, _activityMarkers, idx);
+    return placeMarker(searchText, String(idx + 1), '#1976D2', a.title, _activityMarkers, idx, 'activity');
   });
 
-  // Accommodation markers — purple (#764ba2), star
+  // Accommodation markers — purple hotel SVG pin
   const accomPromises = segment.accommodations.map((acc, idx) =>
-    placeMarker(acc.location || acc.name, '★', '#764ba2', acc.name, _accomMarkers, idx)
+    placeMarker(acc.location || acc.name, '', '#764ba2', acc.name, _accomMarkers, idx, 'accommodation')
   );
 
   await Promise.all([...activityPromises, ...accomPromises]);
