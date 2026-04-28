@@ -7,10 +7,67 @@ window.AuthManager = (function() {
   const STORAGE_KEY = 'travel-portal-auth';
   const SESSION_STORAGE_KEY = 'travel-portal-auth-session';
   const CREDENTIALS_KEY = 'travel-portal-credentials';
+  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults';
   const DEFAULT_CREDENTIALS = [
     { username: 'admin', password: 'travel2027' },
     { username: 'demo', password: 'demo123' }
   ];
+
+  /**
+   * Get the list of disabled default usernames
+   */
+  function getDisabledDefaults() {
+    try {
+      const data = localStorage.getItem(DISABLED_DEFAULTS_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * Save the list of disabled default usernames
+   */
+  function setDisabledDefaults(list) {
+    try {
+      localStorage.setItem(DISABLED_DEFAULTS_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Disable a built-in default account (hardcode bypass will be skipped)
+   */
+  function disableDefault(username) {
+    const list = getDisabledDefaults();
+    if (!list.includes(username)) {
+      list.push(username);
+      setDisabledDefaults(list);
+    }
+    // Also remove from stored credentials so they don't appear in the list
+    const credentials = loadCredentials();
+    const updated = credentials.filter(c => c.username !== username);
+    saveCredentials(updated);
+  }
+
+  /**
+   * Re-enable a built-in default account (restores hardcode bypass + re-adds to credential list)
+   */
+  function enableDefault(username) {
+    const list = getDisabledDefaults().filter(u => u !== username);
+    setDisabledDefaults(list);
+    // Re-add to credential list with the original default password
+    const original = DEFAULT_CREDENTIALS.find(c => c.username === username);
+    if (original) {
+      const credentials = loadCredentials();
+      if (!credentials.find(c => c.username === username)) {
+        credentials.push({ username: original.username, password: original.password });
+        saveCredentials(credentials);
+      }
+    }
+  }
 
   /**
    * Initialize credentials if not exists
@@ -53,8 +110,11 @@ window.AuthManager = (function() {
    * Authenticate user
    */
   function authenticate(username, password, rememberMe = false) {
-    // Always check hardcoded defaults first so factory credentials always work
-    const defaultMatch = DEFAULT_CREDENTIALS.find(c => c.username === username && c.password === password);
+    const disabledDefaults = getDisabledDefaults();
+    // Check hardcoded defaults only if not disabled
+    const defaultMatch = DEFAULT_CREDENTIALS.find(
+      c => c.username === username && c.password === password && !disabledDefaults.includes(c.username)
+    );
     if (!defaultMatch) {
       const credentials = loadCredentials();
       const user = credentials.find(c => c.username === username && c.password === password);
@@ -144,6 +204,10 @@ window.AuthManager = (function() {
     logout: logout,
     loadCredentials: loadCredentials,
     saveCredentials: saveCredentials,
+    getDisabledDefaults: getDisabledDefaults,
+    disableDefault: disableDefault,
+    enableDefault: enableDefault,
+    DEFAULT_USERNAMES: DEFAULT_CREDENTIALS.map(c => c.username),
     init: init
   };
 })();

@@ -389,30 +389,55 @@ function renderUserList() {
 
   const currentUser = window.AuthManager.getCurrentUser();
   const credentials = window.AuthManager.loadCredentials() || [];
-  const DEFAULT_USERNAMES = ['admin', 'demo'];
+  const DEFAULT_USERNAMES = window.AuthManager.DEFAULT_USERNAMES || ['admin', 'demo'];
+  const disabledDefaults = window.AuthManager.getDisabledDefaults();
 
-  if (credentials.length === 0) {
+  // Build a merged view: all credentials + any disabled defaults not in the list
+  const allRows = [...credentials];
+  DEFAULT_USERNAMES.forEach(u => {
+    if (disabledDefaults.includes(u) && !allRows.find(c => c.username === u)) {
+      allRows.push({ username: u, _disabledDefault: true });
+    }
+  });
+
+  if (allRows.length === 0) {
     container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">No users found.</div>';
     return;
   }
 
-  container.innerHTML = credentials.map((cred, index) => {
+  container.innerHTML = allRows.map(cred => {
     const isCurrentUser = cred.username === currentUser;
     const isBuiltIn = DEFAULT_USERNAMES.includes(cred.username);
-    const canDelete = !isCurrentUser;
+    const isDisabled = disabledDefaults.includes(cred.username);
 
     let badge = '';
     if (isCurrentUser) badge += ' <span class="user-badge user-badge-you">you</span>';
-    if (isBuiltIn) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
+    if (isBuiltIn && !isDisabled) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
+    if (isDisabled) badge += ' <span class="user-badge user-badge-disabled">disabled</span>';
 
-    const deleteBtn = canDelete
-      ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${cred.username}')">Delete</button>`
-      : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
+    let actions = '';
+
+    if (isBuiltIn) {
+      // Built-in accounts: toggle enable/disable (no delete)
+      if (isDisabled) {
+        actions = `<button class="settings-btn settings-btn-success settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', true)">Enable</button>`;
+      } else {
+        const canDisable = !isCurrentUser;
+        actions = canDisable
+          ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', false)">Disable</button>`
+          : `<button class="settings-btn settings-btn-sm" disabled title="Can't disable your own account">Disable</button>`;
+      }
+    } else {
+      // Normal accounts: delete (not yourself)
+      actions = !isCurrentUser
+        ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${cred.username}')">Delete</button>`
+        : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
+    }
 
     return `
-      <div class="user-list-row">
+      <div class="user-list-row${isDisabled ? ' user-list-row-disabled' : ''}">
         <span class="user-list-name">${cred.username}${badge}</span>
-        ${deleteBtn}
+        <div style="display:flex;gap:6px;">${actions}</div>
       </div>`;
   }).join('');
 }
@@ -462,6 +487,24 @@ function createUser() {
   } else {
     msgEl.innerHTML = showMessage('Error saving user — please try again', 'error');
   }
+}
+
+/**
+ * Enable or disable a built-in default account
+ */
+function toggleDefaultAccount(username, enable) {
+  const msgEl = document.getElementById('userMessage');
+  if (!window.AuthManager) return;
+
+  if (enable) {
+    window.AuthManager.enableDefault(username);
+    msgEl.innerHTML = showMessage(`Built-in account "${username}" re-enabled. Default password restored.`, 'success');
+  } else {
+    if (!confirm(`Disable built-in account "${username}"?\n\nThis will block the hardcoded login for this account. Make sure you have another admin account you can log in with.`)) return;
+    window.AuthManager.disableDefault(username);
+    msgEl.innerHTML = showMessage(`Built-in account "${username}" disabled.`, 'success');
+  }
+  renderUserList();
 }
 
 /**
