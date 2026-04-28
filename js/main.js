@@ -112,6 +112,10 @@ function initApp() {
                   <div class="sidebar-title">🏨 Accommodation</div>
                   <div id="mapAccommodationContent"></div>
                 </div>
+                <div class="sidebar-section">
+                  <div class="sidebar-title">🚌 Transport</div>
+                  <div id="mapTransportContent"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -1033,6 +1037,7 @@ function renderSegmentContent() {
     : '<div class="itinerary-empty">No activities for this day yet. Click + Add activity to get started.</div>';
 
   renderAccommodationContent(segment);
+  renderTransportContent(segment);
 
   document.getElementById('mapActivitiesContent').innerHTML = segment.activities
     .map((a, idx) => `
@@ -1055,6 +1060,26 @@ function renderSegmentContent() {
       </div>
     `)
     .join('') || '<div style="color:#aaa;font-size:12px;padding:0.5rem;">No accommodation yet.</div>';
+
+  document.getElementById('mapTransportContent').innerHTML = (segment.transports || [])
+    .map((t, idx) => {
+      const icon = typeof getTransportModeIcon === 'function' ? getTransportModeIcon(t.mode) : '🚗';
+      const name = typeof getTransportModeName === 'function' ? getTransportModeName(t.mode) : '';
+      const directionsUrl = (t.from && t.to && typeof buildDirectionsUrl === 'function')
+        ? buildDirectionsUrl(t) : '';
+      return `
+        <div class="map-item map-transport-item" id="map-item-transport-${idx}"
+             onclick="focusMapMarker('transport',${idx})" style="cursor:pointer;">
+          <div class="map-item-time">${icon} ${name}</div>
+          <div class="map-item-title">${t.title || (t.from && t.to ? t.from + ' → ' + t.to : 'Unnamed route')}</div>
+          ${t.from || t.to ? `<div class="map-item-subtitle">${t.from || '?'} → ${t.to || '?'}</div>` : ''}
+          <div style="margin-top:4px;">
+            <span class="map-item-badge" style="background:#fff3e0;color:#e65100;">🚌 Route ${idx + 1}</span>
+            ${directionsUrl ? `<a href="${directionsUrl}" target="_blank" onclick="event.stopPropagation()" class="map-directions-link">🗺️ Directions</a>` : ''}
+          </div>
+        </div>`;
+    })
+    .join('') || '<div style="color:#aaa;font-size:12px;padding:0.5rem;">No transport yet.</div>';
 }
 
 function switchSegmentTab(tabIndex) {
@@ -1402,18 +1427,154 @@ function updateFlightStatus(idx, value) {
   renderFlights();
 }
 
-// ─── Transport (Coming Soon) ──────────────────────────────────────────────────
+// ─── Transport ───────────────────────────────────────────────────────────────
+
+function renderTransportContent(segment) {
+  const container = document.getElementById('transportContent');
+  if (!container) return;
+  if (!segment.transports || segment.transports.length === 0) {
+    container.innerHTML = '<div class="itinerary-empty">No transport added yet. Click + Add transport to get started.</div>';
+    return;
+  }
+  container.innerHTML = segment.transports.map((t, idx) => buildTransportCard(t, idx)).join('');
+}
+
+function buildTransportCard(t, idx) {
+  const esc = s => UIComponents.escapeHtml(s || '');
+  const modes = typeof TRANSPORT_MODES !== 'undefined' ? TRANSPORT_MODES : [];
+  const modeOptions = modes.map(m =>
+    `<option value="${m.value}" ${t.mode === m.value ? 'selected' : ''}>${m.label}</option>`
+  ).join('');
+  const icon = typeof getTransportModeIcon === 'function' ? getTransportModeIcon(t.mode) : '🚗';
+
+  return `
+    <div class="transport-card" id="transport-card-${idx}">
+      <div class="transport-card-header">
+        <span class="transport-mode-badge">${icon}</span>
+        <input type="text" class="transport-title-input"
+               value="${esc(t.title)}" placeholder="e.g. Drive to Florence"
+               onchange="updateTransport(${idx},'title',this.value)">
+        <select class="transport-mode-select"
+                onchange="updateTransport(${idx},'mode',this.value); this.closest('.transport-card').querySelector('.transport-mode-badge').textContent = getTransportModeIcon(this.value)">
+          ${modeOptions}
+        </select>
+        <button class="btn-remove-activity" onclick="removeTransport(${idx})">×</button>
+      </div>
+
+      <div class="transport-route-row">
+        <div class="transport-point">
+          <label class="field-label">FROM</label>
+          <div class="location-search-wrap">
+            <input type="text"
+                   id="loc-input-transport-from-${idx}"
+                   class="activity-search"
+                   value="${esc(t.from)}"
+                   placeholder="🔍 Start location"
+                   oninput="locationSearchInput(this,'transport-from',${idx})"
+                   onblur="closeLocationDropdown('loc-drop-transport-from-${idx}')">
+            <div class="location-dropdown" id="loc-drop-transport-from-${idx}"></div>
+          </div>
+        </div>
+        <div class="transport-route-arrow">→</div>
+        <div class="transport-point">
+          <label class="field-label">TO</label>
+          <div class="location-search-wrap">
+            <input type="text"
+                   id="loc-input-transport-to-${idx}"
+                   class="activity-search"
+                   value="${esc(t.to)}"
+                   placeholder="🔍 End location"
+                   oninput="locationSearchInput(this,'transport-to',${idx})"
+                   onblur="closeLocationDropdown('loc-drop-transport-to-${idx}')">
+            <div class="location-dropdown" id="loc-drop-transport-to-${idx}"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="transport-meta-row">
+        <div class="transport-meta-group">
+          <label class="field-label">Date</label>
+          <input type="date" class="transport-meta-input" value="${esc(t.date)}"
+                 onchange="updateTransport(${idx},'date',this.value)">
+        </div>
+        <div class="transport-meta-group">
+          <label class="field-label">Time</label>
+          <input type="time" class="transport-meta-input" value="${esc(t.time)}"
+                 onchange="updateTransport(${idx},'time',this.value)">
+        </div>
+        <div class="transport-meta-group">
+          <label class="field-label">Cost</label>
+          <input type="text" class="transport-meta-input" value="${esc(t.cost)}"
+                 placeholder="e.g. €25" onchange="updateTransport(${idx},'cost',this.value)">
+        </div>
+        <div class="transport-meta-group">
+          <label class="field-label">Ref #</label>
+          <input type="text" class="transport-meta-input" value="${esc(t.bookingRef)}"
+                 placeholder="Booking ref" onchange="updateTransport(${idx},'bookingRef',this.value)">
+        </div>
+      </div>
+
+      <div class="activity-field">
+        <label class="field-label">Notes</label>
+        <textarea class="activity-notes-input"
+                  placeholder="Pickup details, platform, luggage, booking instructions…"
+                  onchange="updateTransport(${idx},'notes',this.value)">${esc(t.notes)}</textarea>
+      </div>
+
+      <div class="activity-actions">
+        <button class="btn-directions" onclick="openDirections(${idx})">🗺️ Get Directions</button>
+        <button class="btn-map-link"   onclick="goToMap('transport',${idx})">📍 View on map</button>
+      </div>
+    </div>`;
+}
 
 function addTransport() {
-  const btn = document.querySelector('#segTab-2 .btn-add');
-  const content = document.getElementById('transportContent');
-  if (content && !content.querySelector('.coming-soon-notice')) {
-    const notice = document.createElement('div');
-    notice.className = 'coming-soon-notice';
-    notice.textContent = 'Full transport tracking is coming soon — log transport costs in the Budget tab for now.';
-    content.appendChild(notice);
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment) return;
+  if (!segment.transports) segment.transports = [];
+  segment.transports.push({
+    id: Date.now(),
+    title: '',
+    mode: 'rental_car',
+    from: '',
+    to: '',
+    date: '',
+    time: '',
+    cost: '',
+    bookingRef: '',
+    notes: '',
+  });
+  renderTransportContent(segment);
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator('Transport added');
+}
+
+function removeTransport(idx) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.transports) return;
+  segment.transports.splice(idx, 1);
+  renderTransportContent(segment);
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator('Transport removed');
+}
+
+function updateTransport(idx, field, value) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.transports || !segment.transports[idx]) return;
+  segment.transports[idx][field] = value;
+  Storage.saveTripData(TRIP_DATA);
+  showSavedIndicator();
+}
+
+function openDirections(idx) {
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  if (!segment || !segment.transports || !segment.transports[idx]) return;
+  const t = segment.transports[idx];
+  if (!t.from || !t.to) {
+    showToast('Enter both a start and end location to get directions.');
+    return;
   }
-  if (btn) { btn.disabled = true; btn.textContent = 'Coming soon'; }
+  window.open(buildDirectionsUrl(t), '_blank');
 }
 
 function goToMap(type, idx) {

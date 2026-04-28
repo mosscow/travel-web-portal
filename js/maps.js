@@ -5,11 +5,13 @@
 let _mapsApiState = 'idle'; // 'idle' | 'loading' | 'ready' | 'error'
 let _mapsApiCallbacks = [];
 let _currentMapInstance = null;
-let _currentMarkers = [];       // all markers (for clearMarkers)
-let _activityMarkers = {};      // { activityIdx: marker } — for focusMapMarker
-let _accomMarkers = {};         // { accomIdx:    marker } — for focusMapMarker
-let _pendingFocusType = null;   // set before map load to auto-focus after
-let _pendingFocusIdx  = null;
+let _currentMarkers     = [];   // all point markers (for bulk clearMarkers)
+let _transportPolylines = [];   // polyline objects for transport routes
+let _activityMarkers    = {};   // { activityIdx:      marker }
+let _accomMarkers       = {};   // { accomIdx:         marker }
+let _transportMarkers   = {};   // { transportIdx:     start marker }
+let _pendingFocusType   = null; // set before map load to auto-focus after
+let _pendingFocusIdx    = null;
 
 /**
  * Dynamically load the Google Maps JS API (with Places library) using the key
@@ -51,9 +53,12 @@ function loadGoogleMapsAPI() {
 
 function clearMarkers() {
   _currentMarkers.forEach(m => m.setMap(null));
-  _currentMarkers   = [];
-  _activityMarkers  = {};
-  _accomMarkers     = {};
+  _transportPolylines.forEach(p => p.setMap(null));
+  _currentMarkers     = [];
+  _transportPolylines = [];
+  _activityMarkers    = {};
+  _accomMarkers       = {};
+  _transportMarkers   = {};
 }
 
 function showMapMessage(mapEl, html) {
@@ -69,19 +74,19 @@ function showMapMessage(mapEl, html) {
  */
 function focusMapMarker(type, idx) {
   if (!_currentMapInstance) {
-    // Map not loaded yet — store as pending so initSectionMap can fire it after load
     _pendingFocusType = type;
     _pendingFocusIdx  = idx;
     return;
   }
-  const marker = type === 'activity' ? _activityMarkers[idx] : _accomMarkers[idx];
+  const marker = type === 'activity'      ? _activityMarkers[idx]
+               : type === 'accommodation' ? _accomMarkers[idx]
+               :                            _transportMarkers[idx];
   if (!marker) return;
 
   _currentMapInstance.panTo(marker.getPosition());
-  _currentMapInstance.setZoom(16);
+  _currentMapInstance.setZoom(15);
   google.maps.event.trigger(marker, 'click');
 
-  // Highlight sidebar row
   document.querySelectorAll('.map-item').forEach(el => el.classList.remove('active'));
   const rowEl = document.getElementById(`map-item-${type}-${idx}`);
   if (rowEl) rowEl.classList.add('active');
@@ -245,7 +250,74 @@ async function initSectionMap(segment) {
     placeMarker(acc.location || acc.name, '', '#764ba2', acc.name, _accomMarkers, idx, 'accommodation')
   );
 
-  await Promise.all([...activityPromises, ...accomPromises]);
+  // Transport routes — orange start/end markers + dashed polyline
+  const transportPromises = (segment.transports || []).map((t, idx) => {
+    if (!t.from && !t.to) return Promise.resolve();
+    return new Promise(resolve => {
+      const queries = [];
+      if (t.from) queries.push({ key: 'from', addr: t.from });
+      if (t.to)   queries.push({ key: 'to',   addr: t.to   });
+      const pos = {};
+      let done = 0;
+      queries.forEach(q => {
+        geocoder.geocode({ address: q.addr }, (results, status) => {
+          if (status === 'OK' && results[0]) pos[q.key] = results[0].geometry.location;
+          if (++done === queries.length) {
+            // Start marker — numbered orange circle
+            if (pos.from) {
+              const startMarker = new google.maps.Marker({
+                position: pos.from, map,
+                title: `${t.title || 'Transport'} — start`,
+                icon:  { path: google.maps.SymbolPath.CIRCLE, scale: 11, fillColor: '#f57c00', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+                label: { text: String(idx + 1), color: '#fff', fontSize: '10px', fontWeight: 'bold' },
+              });
+              const iw = new google.maps.InfoWindow({
+                content: `<div style="font-size:13px;font-weight:500;padding:4px 6px;">
+                  ${getTransportModeIcon(t.mode)} ${t.title || getTransportModeName(t.mode)}<br>
+                  <span style="font-size:11px;color:#666;">${t.from || '?'} → ${t.to || '?'}</span><br>
+                  ${(t.from && t.to) ? `<a href="${buildDirectionsUrl(t)}" target="_blank" style="font-size:11px;color:#1976D2;margin-top:4px;display:inline-block;">🗺️ Get Directions</a>` : ''}
+                </div>`,
+              });
+              startMarker.addListener('click', () => iw.open(map, startMarker));
+              _currentMarkers.push(startMarker);
+              _transportMarkers[idx] = startMarker;
+              bounds.extend(pos.from);
+              placed++;
+            }
+            // End marker — smaller orange dot
+            if (pos.to) {
+              const endMarker = new google.maps.Marker({
+                position: pos.to, map,
+                title: `${t.title || 'Transport'} — end`,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#e65100', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 1.5 },
+              });
+              _currentMarkers.push(endMarker);
+              bounds.extend(pos.to);
+              placed++;
+            }
+            // Dashed arrow polyline from start to end
+            if (pos.from && pos.to) {
+              const line = new google.maps.Polyline({
+                path: [pos.from, pos.to],
+                strokeColor:   '#f57c00',
+                strokeOpacity: 0,
+                strokeWeight:  3,
+                icons: [
+                  { icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.8, strokeColor: '#f57c00', scale: 4 }, offset: '0', repeat: '18px' },
+                  { icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 3, fillColor: '#f57c00', fillOpacity: 1, strokeWeight: 0, strokeColor: '#f57c00' }, offset: '55%' },
+                ],
+                map,
+              });
+              _transportPolylines.push(line);
+            }
+            resolve();
+          }
+        });
+      });
+    });
+  });
+
+  await Promise.all([...activityPromises, ...accomPromises, ...transportPromises]);
 
   if (placed > 0) {
     map.fitBounds(bounds);
@@ -268,6 +340,41 @@ async function initSectionMap(segment) {
       }
     });
   }
+}
+
+// ── Transport helpers (also used by main.js) ─────────────────────────────────
+
+const TRANSPORT_MODES = [
+  { value: 'rental_car', label: '🚗 Rental Car',       gMaps: 'driving'  },
+  { value: 'uber',       label: '🚕 Uber / Rideshare', gMaps: 'driving'  },
+  { value: 'taxi',       label: '🚖 Taxi',             gMaps: 'driving'  },
+  { value: 'bus',        label: '🚌 Bus',              gMaps: 'transit'  },
+  { value: 'train',      label: '🚂 Train',            gMaps: 'transit'  },
+  { value: 'flight',     label: '✈️ Flight',           gMaps: 'driving'  },
+  { value: 'metro',      label: '🚇 Metro / Subway',   gMaps: 'transit'  },
+  { value: 'ferry',      label: '⛴️ Ferry',            gMaps: 'transit'  },
+  { value: 'walk',       label: '🚶 Walk',             gMaps: 'walking'  },
+  { value: 'bicycle',    label: '🚲 Bicycle',          gMaps: 'bicycling'},
+  { value: 'scooter',    label: '🛵 Scooter',          gMaps: 'driving'  },
+  { value: 'shuttle',    label: '🚌 Shuttle / Coach',  gMaps: 'driving'  },
+  { value: 'cruise',     label: '🛳️ Cruise',           gMaps: 'driving'  },
+  { value: 'other',      label: '🚀 Other',            gMaps: 'driving'  },
+];
+
+function getTransportModeIcon(mode) {
+  const m = TRANSPORT_MODES.find(x => x.value === mode);
+  return m ? m.label.split(' ')[0] : '🚗';
+}
+
+function getTransportModeName(mode) {
+  const m = TRANSPORT_MODES.find(x => x.value === mode);
+  return m ? m.label.replace(/^\S+\s*/, '') : 'Transport';
+}
+
+function buildDirectionsUrl(transport) {
+  const m = TRANSPORT_MODES.find(x => x.value === transport.mode);
+  const travelMode = m ? m.gMaps : 'driving';
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(transport.from || '')}&destination=${encodeURIComponent(transport.to || '')}&travelmode=${travelMode}`;
 }
 
 // ── Location search autocomplete ─────────────────────────────────────────────
@@ -338,6 +445,10 @@ function selectLocationSuggestion(event, entityType, entityIdx, address) {
     updateActivity(entityIdx, 'location', address);
   } else if (entityType === 'accommodation') {
     updateAccommodation(entityIdx, 'location', address);
+  } else if (entityType === 'transport-from') {
+    updateTransport(entityIdx, 'from', address);
+  } else if (entityType === 'transport-to') {
+    updateTransport(entityIdx, 'to', address);
   }
 }
 

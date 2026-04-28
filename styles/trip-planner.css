@@ -1216,6 +1216,118 @@
   margin-top: 4px;
 }
 
+/* TRANSPORT CARDS */
+.transport-card {
+  background: var(--color-background-secondary);
+  padding: 1rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 0.75rem;
+  border: 0.5px solid var(--color-border-tertiary);
+}
+
+.transport-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.transport-mode-badge {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.transport-title-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+}
+
+.transport-mode-select {
+  padding: 6px 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.transport-route-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.transport-point { min-width: 0; }
+
+.transport-route-arrow {
+  font-size: 18px;
+  color: var(--color-text-secondary);
+  padding-top: 20px;
+  font-weight: 300;
+  flex-shrink: 0;
+}
+
+.transport-meta-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.transport-meta-group {
+  flex: 1;
+  min-width: 90px;
+}
+
+.transport-meta-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  margin-top: 4px;
+}
+
+.btn-directions {
+  padding: 6px 12px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-right: 6px;
+}
+
+.btn-directions:hover { background: #c8e6c9; }
+
+.map-directions-link {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  color: #1976D2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.map-directions-link:hover { text-decoration: underline; }
+
 /* MAP TAB */
 .map-container {
   display: grid;
