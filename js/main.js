@@ -860,7 +860,7 @@ function buildBudgetItemCard(item, index) {
         <div class="bli-actions">
           <button class="bli-expand-btn" onclick="toggleBudgetDetails(${index})" title="Notes &amp; location">▾</button>
           ${synced
-            ? `<span class="bli-sync-note" title="Edit cost in Transport tab">🔒</span>`
+            ? `<button class="bli-goto-transport" onclick="goToTransportItem(${item._sectionId},${item._transportId})" title="Go to transport item">↗</button>`
             : `<button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>`}
         </div>
       </div>
@@ -887,6 +887,31 @@ function buildBudgetItemCard(item, index) {
         </div>
       </div>
     </div>`;
+}
+
+function goToTransportItem(sectionId, transportId) {
+  const sections = TRIP_DATA.sections || [];
+  const sectionIdx = sections.findIndex(s => s.id === sectionId);
+  if (sectionIdx === -1) return;
+
+  // Switch to planner view and select the right section
+  switchPlannerView('planner');
+  selectSegment(sectionId, sectionIdx + 1);
+
+  // Switch to the Transport tab (index 2)
+  switchSegmentTab(2);
+
+  // Scroll to the specific transport card
+  const section = sections[sectionIdx];
+  if (section.transports) {
+    const tIdx = section.transports.findIndex(t => t.id === transportId);
+    if (tIdx !== -1) {
+      setTimeout(() => {
+        const el = document.getElementById(`transport-card-${tIdx}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }
 }
 
 function toggleBudgetDetails(index) {
@@ -1753,7 +1778,7 @@ async function syncTransportsToBudget() {
   for (const section of (TRIP_DATA.sections || [])) {
     for (const t of (section.transports || [])) {
       const cost = parseTransportCost(t.cost);
-      if (cost > 0) allTransports.push({ ...t, cost, sectionName: section.name });
+      if (cost > 0) allTransports.push({ ...t, cost, sectionName: section.name, _sectionId: section.id });
     }
   }
 
@@ -1770,6 +1795,8 @@ async function syncTransportsToBudget() {
       TRIP_DATA.budget.items.push({
         id:              t.id || Date.now() + Math.random(),
         _transportSync:  true,
+        _transportId:    t.id,
+        _sectionId:      t._sectionId,
         description:     t.title || `${t.from || '?'} → ${t.to || '?'}`,
         category:        'transport',
         refNum:          t.bookingRef || '',
