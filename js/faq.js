@@ -135,6 +135,85 @@ function initFaq() {
 
         <div class="faq-divider"></div>
 
+        <!-- ── Vercel KV ───────────────────────────────────────── -->
+        <div class="faq-section" id="faq-vercel-kv">
+          <div class="faq-section-eyebrow">Vercel KV</div>
+          <h2 class="faq-section-title">How to enable cross-device user accounts</h2>
+          <p class="faq-intro">
+            By default, user accounts are stored in your browser's localStorage — which means they only exist on the device where they were created.
+            Connecting a Vercel KV (Redis) store moves credentials to the server so every device shares the same user list.
+          </p>
+
+          <div class="faq-steps">
+            <div class="faq-step">
+              <div class="faq-step-num">1</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Open your project in the Vercel dashboard</div>
+                <p>Go to <a href="https://vercel.com/dashboard" target="_blank" rel="noopener" class="faq-link">vercel.com/dashboard</a>, select your Travel Planner project, then click the <strong>Storage</strong> tab.</p>
+              </div>
+            </div>
+
+            <div class="faq-step">
+              <div class="faq-step-num">2</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Create a KV store</div>
+                <p>Click <strong>Connect Store → Create New → KV</strong>. Give it a name (e.g. <em>travel-portal-kv</em>) and choose the region closest to you. Accept the defaults and click <strong>Create</strong>.</p>
+                <div class="faq-tip">
+                  <span class="faq-tip-icon">💡</span>
+                  The Vercel KV free tier (256 MB) is more than enough for storing user accounts.
+                </div>
+              </div>
+            </div>
+
+            <div class="faq-step">
+              <div class="faq-step-num">3</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Copy the REST API credentials</div>
+                <p>On the KV store page, click the <strong>REST API</strong> tab. You need two values:</p>
+                <div class="faq-code">KV_REST_API_URL=https://&lt;your-kv&gt;.upstash.io
+KV_REST_API_TOKEN=&lt;long-token-string&gt;</div>
+              </div>
+            </div>
+
+            <div class="faq-step">
+              <div class="faq-step-num">4</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Add the environment variables</div>
+                <p>Go to your project <strong>Settings → Environment Variables</strong>. Add these three variables for <em>Production</em>, <em>Preview</em>, and <em>Development</em>:</p>
+                <div class="faq-code">KV_REST_API_URL   → (from step 3)
+KV_REST_API_TOKEN → (from step 3)
+AUTH_SALT         → (any random string — e.g. run: openssl rand -hex 32)</div>
+                <div class="faq-tip">
+                  <span class="faq-tip-icon">🛡️</span>
+                  <code>AUTH_SALT</code> is mixed into password hashes — it doesn't need to be secret, but it should be unique to your deployment and never change.
+                </div>
+              </div>
+            </div>
+
+            <div class="faq-step">
+              <div class="faq-step-num">5</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Redeploy the project</div>
+                <p>Go to the <strong>Deployments</strong> tab and click <strong>Redeploy</strong> on the latest deployment (choose <em>Redeploy without cache</em>). The new env vars take effect only after a new deployment.</p>
+              </div>
+            </div>
+
+            <div class="faq-step">
+              <div class="faq-step-num">6</div>
+              <div class="faq-step-body">
+                <div class="faq-step-title">Re-create your accounts</div>
+                <p>Existing localStorage accounts are <strong>not</strong> migrated automatically. After redeployment, go to <strong>Settings → Account → Create User</strong> to create your accounts on the server. All devices will see these accounts immediately.</p>
+                <div class="faq-tip">
+                  <span class="faq-tip-icon">💡</span>
+                  The first account created gets the <span class="faq-badge faq-badge-recommended">admin</span> role automatically.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq-divider"></div>
+
         <!-- ── Telegram ─────────────────────────────────────────── -->
         <div class="faq-section" id="faq-telegram">
           <div class="faq-section-eyebrow">Telegram</div>

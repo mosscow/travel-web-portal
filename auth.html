@@ -152,13 +152,18 @@
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
 
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const rememberMe = document.getElementById('rememberMe').checked;
-      const messageEl = document.getElementById('message');
+      const username    = document.getElementById('username').value;
+      const password    = document.getElementById('password').value;
+      const rememberMe  = document.getElementById('rememberMe').checked;
+      const messageEl   = document.getElementById('message');
+      const submitBtn   = this.querySelector('button[type="submit"]');
 
-      // Authenticate
-      const result = window.AuthManager.authenticate(username, password, rememberMe);
+      submitBtn.disabled = true;
+      messageEl.textContent = 'Signing in…';
+      messageEl.className = 'message success';
+
+      // authenticate() is async — it tries the API then falls back to localStorage
+      const result = await window.AuthManager.authenticate(username, password, rememberMe);
 
       if (result.success) {
         messageEl.textContent = 'Login successful! Redirecting...';
@@ -169,6 +174,7 @@
         messageEl.className = 'message error';
         document.getElementById('password').value = '';
         document.getElementById('resetHint').style.display = 'block';
+        submitBtn.disabled = false;
       }
     });
 
@@ -188,13 +194,18 @@
       }
     }
 
+    // Async setup/auth guard — must check API in case this is a new device
+    // where localStorage hasn't been seeded yet but users exist server-side.
     if (window.AuthManager) {
-      if (!window.AuthManager.isSetupComplete()) {
-        // No real accounts exist yet — go straight to first-time setup.
-        // The login form is not useful until at least one account has been created.
-        window.location.href = 'setup.html';
-      } else if (window.AuthManager.isAuthenticated()) {
+      if (window.AuthManager.isAuthenticated()) {
         window.location.href = 'index.html';
+      } else {
+        window.AuthManager.checkSetupComplete().then(function(done) {
+          if (!done) {
+            // No accounts exist anywhere — send to first-run setup.
+            window.location.href = 'setup.html';
+          }
+        });
       }
     }
   </script>

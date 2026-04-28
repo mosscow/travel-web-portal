@@ -152,7 +152,16 @@ function initSettings() {
 
         <div class="settings-section-divider"></div>
 
-        <div class="settings-subsection-title">Users</div>
+        <div class="settings-subsection-title">
+          Users
+          <span class="settings-help-tip">
+            <span class="settings-help-icon">?</span>
+            <span class="settings-help-bubble">
+              Accounts only sync across devices when Vercel KV is configured.
+              <a href="#" onclick="openFaq('faq-vercel-kv'); return false;" class="settings-help-link">See the FAQ guide →</a>
+            </span>
+          </span>
+        </div>
         <div id="userListContainer" class="settings-user-list"></div>
 
         <div class="settings-subsection-title" style="margin-top:1rem;">Create New User</div>
@@ -383,47 +392,70 @@ async function sendTelegramNotification(text) {
 /**
  * Change password for current user
  */
-function changePassword() {
+async function changePassword() {
   if (!window.AuthManager) {
     alert('Authentication system not loaded.');
     return;
   }
-  
+
   const currentUser = window.AuthManager.getCurrentUser();
   if (!currentUser) {
     alert('Not logged in');
     return;
   }
-  
+
   const currentPassword = prompt('Enter current password for "' + currentUser + '":');
   if (!currentPassword) return;
 
-  const credentials = window.AuthManager.loadCredentials() || [];
-  const userCred = credentials.find(c => c.username === currentUser);
-  
-  if (!userCred || userCred.password !== currentPassword) {
-    alert('Current password is incorrect');
-    return;
-  }
-
   const newPassword = prompt('Enter new password for "' + currentUser + '" (min 6 characters):');
   if (!newPassword) return;
-  
+
   if (newPassword.length < 6) {
     alert('Password must be at least 6 characters');
     return;
   }
-
   if (newPassword === currentPassword) {
     alert('New password must be different from current password');
     return;
   }
-  
+
+  const msgEl = document.getElementById('authMessage');
+  msgEl.innerHTML = showMessage('Updating password…', 'info');
+
+  // ── Try API ──────────────────────────────────────────────────────────────
+  const { status, data } = await window.AuthManager.callUsersAPI('POST', {
+    action: 'change-password',
+    username: currentUser,
+    currentPassword,
+    newPassword,
+  });
+
+  if (status === 200 && data.success) {
+    msgEl.innerHTML = showMessage('Password updated for "' + currentUser + '"!', 'success');
+    return;
+  }
+  if (status === 401) {
+    msgEl.innerHTML = showMessage('Current password is incorrect.', 'error');
+    return;
+  }
+  if (status !== 503 && status !== 0) {
+    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
+    return;
+  }
+
+  // ── API unavailable — localStorage fallback ───────────────────────────────
+  const credentials = window.AuthManager.loadCredentials() || [];
+  const userCred = credentials.find(c => c.username === currentUser);
+
+  if (!userCred || userCred.password !== currentPassword) {
+    msgEl.innerHTML = showMessage('Current password is incorrect.', 'error');
+    return;
+  }
   userCred.password = newPassword;
   if (window.AuthManager.saveCredentials(credentials)) {
-    document.getElementById('authMessage').innerHTML = showMessage('Password updated for "' + currentUser + '"!', 'success');
+    msgEl.innerHTML = showMessage('Password updated for "' + currentUser + '"!', 'success');
   } else {
-    document.getElementById('authMessage').innerHTML = showMessage('Error updating password', 'error');
+    msgEl.innerHTML = showMessage('Error updating password', 'error');
   }
 }
 
@@ -431,9 +463,7 @@ function changePassword() {
  * Update current user display
  */
 function updateCurrentUserDisplay() {
-  if (!window.AuthManager) {
-    return;
-  }
+  if (!window.AuthManager) return;
 
   const currentUser = window.AuthManager.getCurrentUser();
   const el = document.getElementById('currentUserDisplay');
@@ -446,28 +476,44 @@ function updateCurrentUserDisplay() {
     }
   }
 
+  // renderUserList is async — fire and forget
   renderUserList();
 }
 
 /**
- * Render the list of all users in the settings card
+ * Render the list of all users in the settings card.
+ * Fetches from the server API; falls back to localStorage on 503.
  */
-function renderUserList() {
+async function renderUserList() {
   const container = document.getElementById('userListContainer');
   if (!container || !window.AuthManager) return;
 
-  const currentUser = window.AuthManager.getCurrentUser();
-  const credentials = window.AuthManager.loadCredentials() || [];
-  const DEFAULT_USERNAMES = window.AuthManager.DEFAULT_USERNAMES || ['admin', 'demo'];
-  const disabledDefaults = window.AuthManager.getDisabledDefaults();
+  container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">Loading users…</div>';
 
-  // Build a merged view: all credentials + any disabled defaults not in the list
-  const allRows = [...credentials];
-  DEFAULT_USERNAMES.forEach(u => {
-    if (disabledDefaults.includes(u) && !allRows.find(c => c.username === u)) {
-      allRows.push({ username: u, _disabledDefault: true });
-    }
-  });
+  const currentUser       = window.AuthManager.getCurrentUser();
+  const DEFAULT_USERNAMES = window.AuthManager.DEFAULT_USERNAMES || ['admin', 'demo'];
+  const disabledDefaults  = window.AuthManager.getDisabledDefaults();
+
+  // ── Try API ────────────────────────────────────────────────────────────────
+  const { status, data } = await window.AuthManager.callUsersAPI('GET');
+
+  let allRows; // [{ username, role?, createdAt?, _disabledDefault? }]
+
+  if (status === 200 && Array.isArray(data.users)) {
+    // Server list — these are the authoritative accounts
+    allRows = data.users.map(u => ({ username: u.username, role: u.role, createdAt: u.createdAt }));
+  } else {
+    // Fallback to localStorage credentials list
+    console.warn('Users API unavailable — rendering localStorage user list');
+    const credentials = window.AuthManager.loadCredentials() || [];
+    allRows = [...credentials];
+    // Also show disabled built-ins that aren't in the creds list
+    DEFAULT_USERNAMES.forEach(u => {
+      if (disabledDefaults.includes(u) && !allRows.find(c => c.username === u)) {
+        allRows.push({ username: u, _disabledDefault: true });
+      }
+    });
+  }
 
   if (allRows.length === 0) {
     container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">No users found.</div>';
@@ -476,28 +522,32 @@ function renderUserList() {
 
   container.innerHTML = allRows.map(cred => {
     const isCurrentUser = cred.username === currentUser;
-    const isBuiltIn = DEFAULT_USERNAMES.includes(cred.username);
-    const isDisabled = disabledDefaults.includes(cred.username);
+    const isBuiltIn     = DEFAULT_USERNAMES.includes(cred.username);
+    const isDisabled    = disabledDefaults.includes(cred.username);
+    const isAdmin       = cred.role === 'admin';
 
     let badge = '';
     if (isCurrentUser) badge += ' <span class="user-badge user-badge-you">you</span>';
-    if (isBuiltIn && !isDisabled) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
-    if (isDisabled) badge += ' <span class="user-badge user-badge-disabled">disabled</span>';
+    if (isAdmin)        badge += ' <span class="user-badge user-badge-builtin">admin</span>';
+    if (isBuiltIn && !isAdmin) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
+    if (isDisabled)     badge += ' <span class="user-badge user-badge-disabled">disabled</span>';
+    if (cred.createdAt) {
+      const d = new Date(cred.createdAt);
+      badge += ' <span style="font-size:10px;color:#aaa;margin-left:4px;">joined ' + d.toLocaleDateString() + '</span>';
+    }
 
     let actions = '';
-
-    if (isBuiltIn) {
-      // Built-in accounts: toggle enable/disable (no delete)
+    if (isBuiltIn && !isAdmin) {
+      // Built-in accounts: toggle enable/disable
       if (isDisabled) {
         actions = `<button class="settings-btn settings-btn-success settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', true)">Enable</button>`;
       } else {
-        const canDisable = !isCurrentUser;
-        actions = canDisable
+        actions = !isCurrentUser
           ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="toggleDefaultAccount('${cred.username}', false)">Disable</button>`
           : `<button class="settings-btn settings-btn-sm" disabled title="Can't disable your own account">Disable</button>`;
       }
-    } else {
-      // Normal accounts: delete (not yourself)
+    } else if (!isBuiltIn || isAdmin) {
+      // Normal or admin accounts from the API: delete (not yourself)
       actions = !isCurrentUser
         ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${cred.username}')">Delete</button>`
         : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
@@ -514,44 +564,62 @@ function renderUserList() {
 /**
  * Create a new user account
  */
-function createUser() {
+async function createUser() {
   const usernameEl = document.getElementById('newUsername');
   const passwordEl = document.getElementById('newUserPassword');
-  const msgEl = document.getElementById('userMessage');
+  const msgEl      = document.getElementById('userMessage');
 
   const username = usernameEl.value.trim().toLowerCase();
   const password = passwordEl.value;
 
   if (!username) {
-    msgEl.innerHTML = showMessage('Please enter a username', 'error');
-    return;
+    msgEl.innerHTML = showMessage('Please enter a username', 'error'); return;
   }
   if (username.length < 2) {
-    msgEl.innerHTML = showMessage('Username must be at least 2 characters', 'error');
-    return;
+    msgEl.innerHTML = showMessage('Username must be at least 2 characters', 'error'); return;
   }
   if (!/^[a-z0-9_]+$/.test(username)) {
-    msgEl.innerHTML = showMessage('Username can only contain letters, numbers, and underscores', 'error');
-    return;
+    msgEl.innerHTML = showMessage('Username can only contain letters, numbers, and underscores', 'error'); return;
   }
   if (!password || password.length < 6) {
-    msgEl.innerHTML = showMessage('Password must be at least 6 characters', 'error');
+    msgEl.innerHTML = showMessage('Password must be at least 6 characters', 'error'); return;
+  }
+
+  msgEl.innerHTML = showMessage('Creating user…', 'info');
+
+  // ── Try API ────────────────────────────────────────────────────────────────
+  const { status, data } = await window.AuthManager.callUsersAPI('POST', {
+    action: 'create', username, password
+  });
+
+  if (status === 200 && data.success) {
+    usernameEl.value = '';
+    passwordEl.value = '';
+    msgEl.innerHTML  = showMessage('User "' + username + '" created successfully!', 'success');
+    renderUserList();
+    return;
+  }
+  if (status === 409) {
+    msgEl.innerHTML = showMessage(data.error || 'Username "' + username + '" already exists', 'error');
+    return;
+  }
+  if (status !== 503 && status !== 0) {
+    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
     return;
   }
 
+  // ── 503 / network error — localStorage fallback ────────────────────────────
+  console.warn('Users API unavailable — creating user in localStorage');
   const credentials = window.AuthManager.loadCredentials() || [];
-  const exists = credentials.find(c => c.username === username);
-  if (exists) {
+  if (credentials.find(c => c.username === username)) {
     msgEl.innerHTML = showMessage('Username "' + username + '" already exists', 'error');
     return;
   }
-
   credentials.push({ username, password });
-
   if (window.AuthManager.saveCredentials(credentials)) {
     usernameEl.value = '';
     passwordEl.value = '';
-    msgEl.innerHTML = showMessage('User "' + username + '" created successfully!', 'success');
+    msgEl.innerHTML  = showMessage('User "' + username + '" created (local only — server not configured).', 'success');
     renderUserList();
   } else {
     msgEl.innerHTML = showMessage('Error saving user — please try again', 'error');
@@ -579,29 +647,45 @@ function toggleDefaultAccount(username, enable) {
 /**
  * Delete a user account
  */
-function deleteUser(username) {
+async function deleteUser(username) {
   const currentUser = window.AuthManager ? window.AuthManager.getCurrentUser() : null;
+  const msgEl       = document.getElementById('userMessage');
 
   if (username === currentUser) {
-    document.getElementById('userMessage').innerHTML = showMessage("You can't delete your own account while logged in", 'error');
+    msgEl.innerHTML = showMessage("You can't delete your own account while logged in", 'error');
     return;
   }
 
-  const DEFAULT_USERNAMES = ['admin', 'demo'];
-  const warningText = DEFAULT_USERNAMES.includes(username)
-    ? `"${username}" is a built-in account. Deleting it from this list won't disable the default login. Delete anyway?`
-    : `Delete user "${username}"? This cannot be undone.`;
+  if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
 
-  if (!confirm(warningText)) return;
+  msgEl.innerHTML = showMessage('Deleting…', 'info');
 
+  // ── Try API ────────────────────────────────────────────────────────────────
+  const { status, data } = await window.AuthManager.callUsersAPI('DELETE', { username });
+
+  if (status === 200 && data.success) {
+    msgEl.innerHTML = showMessage('User "' + username + '" deleted.', 'success');
+    renderUserList();
+    return;
+  }
+  if (status === 404) {
+    msgEl.innerHTML = showMessage('User "' + username + '" not found on server.', 'error');
+    return;
+  }
+  if (status !== 503 && status !== 0) {
+    msgEl.innerHTML = showMessage(data.error || 'Server error — please try again.', 'error');
+    return;
+  }
+
+  // ── 503 / network error — localStorage fallback ────────────────────────────
+  console.warn('Users API unavailable — deleting user from localStorage');
   const credentials = window.AuthManager.loadCredentials() || [];
-  const updated = credentials.filter(c => c.username !== username);
-
+  const updated     = credentials.filter(c => c.username !== username);
   if (window.AuthManager.saveCredentials(updated)) {
-    document.getElementById('userMessage').innerHTML = showMessage('User "' + username + '" deleted.', 'success');
+    msgEl.innerHTML = showMessage('User "' + username + '" deleted (local only).', 'success');
     renderUserList();
   } else {
-    document.getElementById('userMessage').innerHTML = showMessage('Error deleting user', 'error');
+    msgEl.innerHTML = showMessage('Error deleting user', 'error');
   }
 }
 

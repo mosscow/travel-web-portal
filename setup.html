@@ -173,12 +173,13 @@
   <script>
     // Setup page is intentionally accessible WITHOUT prior login.
     // It is the mechanism by which the first user account is created.
-    // If setup is already done, send the user to the login page.
-    (function() {
-      if (window.AuthManager && window.AuthManager.isSetupComplete()) {
-        window.location.href = 'auth.html';
-      }
-    })();
+    // Check both localStorage AND the API — if accounts already exist anywhere,
+    // redirect to the login page instead of showing the creation form.
+    if (window.AuthManager) {
+      window.AuthManager.checkSetupComplete().then(function(done) {
+        if (done) window.location.href = 'auth.html';
+      });
+    }
 
     function checkStrength() {
       const pw    = document.getElementById('newPassword').value;
@@ -199,65 +200,89 @@
         { pct: '100%', color: '#1b5e20', text: 'Very strong' },
       ];
       const lvl = levels[Math.min(score, 5)];
-      fill.style.width  = lvl.pct;
+      fill.style.width      = lvl.pct;
       fill.style.background = lvl.color;
-      label.textContent = lvl.text;
-      label.style.color = lvl.color;
+      label.textContent     = lvl.text;
+      label.style.color     = lvl.color;
     }
 
-    function createAccount() {
+    async function createAccount() {
       const msgEl    = document.getElementById('setupMessage');
+      const btn      = document.getElementById('createBtn');
       const username = document.getElementById('newUsername').value.trim();
       const password = document.getElementById('newPassword').value;
       const confirm  = document.getElementById('confirmPassword').value;
 
       if (!username || username.length < 2) {
-        showError('Username must be at least 2 characters.');
-        return;
+        showError('Username must be at least 2 characters.'); return;
       }
       if (username === 'admin' || username === 'demo') {
-        showError('Choose a different username — "' + username + '" is a reserved built-in account.');
-        return;
+        showError('Choose a different username — "' + username + '" is a reserved built-in account.'); return;
       }
       if (!password || password.length < 6) {
-        showError('Password must be at least 6 characters.');
-        return;
+        showError('Password must be at least 6 characters.'); return;
       }
       if (password !== confirm) {
-        showError('Passwords do not match.');
+        showError('Passwords do not match.'); return;
+      }
+
+      btn.disabled = true;
+      msgEl.className   = 'message';
+      msgEl.textContent = '';
+
+      // ── Try the server-side API first ──────────────────────────────────────
+      const { status, data } = await window.AuthManager.callUsersAPI('POST', {
+        action: 'create', username, password
+      });
+
+      if (status === 200 && data.success) {
+        // API success — mark setup complete locally and create a session.
+        window.AuthManager.completeSetup();
+        window.AuthManager.disableDefault('admin');
+        window.AuthManager.disableDefault('demo');
+        // Authenticate via API to get a proper session
+        await window.AuthManager.authenticate(username, password, false);
+        showSuccess();
         return;
       }
 
-      // Create the new user
+      if (status === 409) {
+        showError(data.error || 'Username "' + username + '" is already taken — choose another.');
+        btn.disabled = false;
+        return;
+      }
+
+      if (status !== 503 && status !== 0) {
+        // Unexpected API error
+        showError(data.error || 'Server error — please try again.');
+        btn.disabled = false;
+        return;
+      }
+
+      // ── 503 / network error — API not configured, fall back to localStorage ─
+      console.warn('Users API unavailable — using localStorage fallback for setup');
       const credentials = window.AuthManager.loadCredentials();
       if (credentials.find(c => c.username === username)) {
         showError('Username "' + username + '" is already taken — choose another.');
+        btn.disabled = false;
         return;
       }
       credentials.push({ username, password });
       window.AuthManager.saveCredentials(credentials);
-
-      // Disable both built-in bootstrap accounts (cosmetic — the hardcode bypass
-      // is fully disabled the moment completeSetup() is called below anyway)
       window.AuthManager.disableDefault('admin');
       window.AuthManager.disableDefault('demo');
-
-      // Mark setup complete BEFORE authenticate() so the post-setup code path
-      // is used (localStorage credentials only, no hardcode bypass).
       window.AuthManager.completeSetup();
-
-      // Clear any leftover session then log straight in — no round-trip to login.
       localStorage.removeItem('travel-portal-auth');
       sessionStorage.removeItem('travel-portal-auth-session');
-      window.AuthManager.authenticate(username, password, false);
+      await window.AuthManager.authenticate(username, password, false);
+      showSuccess();
+    }
 
+    function showSuccess() {
+      const msgEl = document.getElementById('setupMessage');
       msgEl.className   = 'message success';
       msgEl.textContent = 'Account created! Taking you to the app…';
-      document.getElementById('createBtn').disabled = true;
-
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 800);
+      setTimeout(() => { window.location.href = 'index.html'; }, 800);
     }
 
     function showError(text) {

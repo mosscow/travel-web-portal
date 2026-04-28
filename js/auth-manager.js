@@ -5,27 +5,54 @@
  *
  * Auth model (two distinct phases):
  *
- *  PRE-SETUP  (isSetupComplete() === false)
- *    Only DEFAULT_CREDENTIALS (admin/travel2027, demo/demo123) are accepted.
- *    This gives first-time access to the setup page so a real account can be
- *    created.  No localStorage credentials are checked in this phase.
+ *  PRE-SETUP  (checkSetupComplete() resolves false)
+ *    If the API is reachable and has zero users → show setup.html.
+ *    If the API is unreachable (503) and localStorage has no setup flag →
+ *    only DEFAULT_CREDENTIALS (admin/travel2027, demo/demo123) are accepted
+ *    as a bootstrap path so the owner can reach setup.html.
  *
- *  POST-SETUP  (isSetupComplete() === true)
- *    ONLY localStorage credentials are accepted.  The hardcoded defaults are
- *    completely ignored — no bypass possible regardless of disabled-defaults
- *    flags or credential list state.
+ *  POST-SETUP  (checkSetupComplete() resolves true)
+ *    The API is the authoritative credential store.
+ *    If the API is unreachable (503), localStorage credentials are used as
+ *    a local fallback — the hardcoded defaults are never accepted in this
+ *    phase regardless of the fallback path.
+ *
+ * All public methods that touch the network return Promises.
+ * Legacy callers that used the old synchronous authenticate() must now await.
  */
 window.AuthManager = (function() {
-  const STORAGE_KEY          = 'travel-portal-auth';
-  const SESSION_STORAGE_KEY  = 'travel-portal-auth-session';
-  const CREDENTIALS_KEY      = 'travel-portal-credentials';
-  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults'; // kept for Settings UI
-  const SETUP_KEY            = 'travel-portal-setup-complete';
+  const STORAGE_KEY           = 'travel-portal-auth';
+  const SESSION_STORAGE_KEY   = 'travel-portal-auth-session';
+  const CREDENTIALS_KEY       = 'travel-portal-credentials';
+  const DISABLED_DEFAULTS_KEY = 'travel-portal-disabled-defaults';
+  const SETUP_KEY             = 'travel-portal-setup-complete';
 
   const DEFAULT_CREDENTIALS = [
     { username: 'admin', password: 'travel2027' },
     { username: 'demo',  password: 'demo123'    },
   ];
+
+  // ── Users API helper ─────────────────────────────────────────────────────────
+
+  /**
+   * Call /api/users.
+   * Returns { status, data } — never throws.
+   * status 0 = network error / API not deployed.
+   */
+  async function callUsersAPI(method, body) {
+    try {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res  = await fetch('/api/users', opts);
+      const data = await res.json();
+      return { status: res.status, data };
+    } catch (e) {
+      return { status: 0, data: { error: e.message } };
+    }
+  }
 
   // ── Session helpers ──────────────────────────────────────────────────────────
 
@@ -39,7 +66,7 @@ window.AuthManager = (function() {
     console.log('✅ Session created for:', username);
   }
 
-  // ── Credential storage ───────────────────────────────────────────────────────
+  // ── Credential storage (localStorage fallback) ────────────────────────────────
 
   function loadCredentials() {
     try {
@@ -63,6 +90,7 @@ window.AuthManager = (function() {
 
   // ── Setup state ──────────────────────────────────────────────────────────────
 
+  /** Synchronous localStorage check — use as a fast cache only. */
   function isSetupComplete() {
     return localStorage.getItem(SETUP_KEY) === 'true';
   }
@@ -71,7 +99,27 @@ window.AuthManager = (function() {
     localStorage.setItem(SETUP_KEY, 'true');
   }
 
-  // ── Disabled-defaults list (Settings UI only — not used in authenticate()) ───
+  /**
+   * Async setup check — authoritative.
+   * Returns true if:
+   *   (a) localStorage already has the flag, OR
+   *   (b) the API reports at least one user exists.
+   *
+   * Side-effect: caches the result in localStorage so subsequent
+   * synchronous isSetupComplete() calls return the right answer.
+   */
+  async function checkSetupComplete() {
+    if (isSetupComplete()) return true;
+
+    const { status, data } = await callUsersAPI('GET');
+    if (status === 200 && data.users && data.users.length > 0) {
+      completeSetup(); // cache for this device
+      return true;
+    }
+    return false;
+  }
+
+  // ── Disabled-defaults list (Settings UI only) ────────────────────────────────
 
   function getDisabledDefaults() {
     try {
@@ -91,11 +139,6 @@ window.AuthManager = (function() {
     }
   }
 
-  /**
-   * Disable a built-in default account.
-   * Post-setup this is cosmetic only (hardcode bypass is already fully disabled).
-   * Still removes the account from the credentials list so it doesn't appear in Settings.
-   */
   function disableDefault(username) {
     const list = getDisabledDefaults();
     if (!list.includes(username)) {
@@ -106,11 +149,6 @@ window.AuthManager = (function() {
     saveCredentials(credentials.filter(c => c.username !== username));
   }
 
-  /**
-   * Re-enable a built-in default account.
-   * Re-adds it to the credential list with the original default password.
-   * Users can then change the password via Settings if they want to keep it.
-   */
   function enableDefault(username) {
     setDisabledDefaults(getDisabledDefaults().filter(u => u !== username));
     const original = DEFAULT_CREDENTIALS.find(c => c.username === username);
@@ -126,15 +164,38 @@ window.AuthManager = (function() {
   // ── Core authentication ──────────────────────────────────────────────────────
 
   /**
-   * Authenticate a user.
+   * Authenticate a user.  Always returns a Promise.
    *
-   * PRE-SETUP:  only DEFAULT_CREDENTIALS accepted (bootstrap access).
-   * POST-SETUP: only localStorage credentials accepted (hardcode fully disabled).
+   * Strategy:
+   *   1. Try POST /api/users { action: 'auth' }
+   *      • 200 success  → create session, return success
+   *      • 401          → credentials wrong, return failure
+   *      • 503 / 0      → KV not configured, fall through to localStorage
+   *   2. localStorage fallback:
+   *      • Pre-setup    → only DEFAULT_CREDENTIALS accepted (bootstrap access)
+   *      • Post-setup   → only localStorage credentials accepted
    */
-  function authenticate(username, password, rememberMe = false) {
+  async function authenticate(username, password, rememberMe = false) {
+    // ── 1. Try API ───────────────────────────────────────────────────────────
+    const { status, data } = await callUsersAPI('POST', {
+      action: 'auth', username, password
+    });
+
+    if (status === 200 && data.success) {
+      completeSetup(); // ensure device-local flag is set
+      createSession(username, rememberMe);
+      return { success: true, message: 'Login successful', user: username, role: data.role };
+    }
+
+    if (status === 401) {
+      return { success: false, message: 'Invalid username or password' };
+    }
+
+    // ── 2. API unavailable (503 or network error) — local fallback ───────────
+    console.warn('Users API unavailable (status', status, ') — falling back to localStorage auth');
+
     if (!isSetupComplete()) {
-      // ── Pre-setup bootstrap ──────────────────────────────────────────────────
-      // Allow the factory defaults through so the owner can reach setup.html.
+      // Pre-setup bootstrap: allow factory defaults through
       const defaultMatch = DEFAULT_CREDENTIALS.find(
         c => c.username === username && c.password === password
       );
@@ -145,8 +206,7 @@ window.AuthManager = (function() {
       return { success: false, message: 'Invalid username or password' };
     }
 
-    // ── Post-setup: localStorage credentials only ────────────────────────────
-    // DEFAULT_CREDENTIALS are completely ignored here — no bypass possible.
+    // Post-setup local fallback: localStorage credentials only
     const credentials = loadCredentials();
     const user = credentials.find(
       c => c.username === username && c.password === password
@@ -154,7 +214,6 @@ window.AuthManager = (function() {
     if (!user) {
       return { success: false, message: 'Invalid username or password' };
     }
-
     createSession(username, rememberMe);
     return { success: true, message: 'Login successful', user: username };
   }
@@ -197,14 +256,21 @@ window.AuthManager = (function() {
 
   // Public API
   return {
+    // Auth
     authenticate,
     getCurrentUser,
     isAuthenticated,
     logout,
-    loadCredentials,
-    saveCredentials,
+    // Setup state
     isSetupComplete,
     completeSetup,
+    checkSetupComplete,
+    // API access (used by settings.js and setup.html)
+    callUsersAPI,
+    // Local-storage credential management (fallback / offline)
+    loadCredentials,
+    saveCredentials,
+    // Built-in default account helpers
     getDisabledDefaults,
     disableDefault,
     enableDefault,
