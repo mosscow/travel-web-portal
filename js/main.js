@@ -801,6 +801,8 @@ function renderBudgetItems() {
         <span class="bli-num"></span>
         <span class="bli-desc">Description</span>
         <span class="bli-cat">Category</span>
+        <span class="bli-date-input">Start</span>
+        <span class="bli-date-input">End</span>
         <span class="bli-ref">Ref #</span>
         <span class="bli-amount">Total (${cur})</span>
         <span class="bli-amount">Deposit</span>
@@ -839,6 +841,12 @@ function buildBudgetItemCard(item, index) {
                 onchange="updateBudgetItem(${index},'category',this.value)">
           ${catOptions}
         </select>
+        <input type="date" class="bli-date-input${synced ? ' bli-date-synced' : ''}" value="${item.startDate || ''}"
+               ${synced ? 'readonly' : ''}
+               onchange="updateBudgetItem(${index},'startDate',this.value)">
+        <input type="date" class="bli-date-input${synced ? ' bli-date-synced' : ''}" value="${item.endDate || ''}"
+               ${synced ? 'readonly' : ''}
+               onchange="updateBudgetItem(${index},'endDate',this.value)">
         <input type="text" class="bli-ref" value="${esc(item.refNum)}"
                placeholder="Ref #" ${ro}
                onchange="updateBudgetItem(${index},'refNum',this.value)">
@@ -850,30 +858,20 @@ function buildBudgetItemCard(item, index) {
                oninput="updateBudgetItem(${index},'depositPaid',parseFloat(this.value)||0)">
         <span class="bli-outstanding" id="budget-outstanding-${index}">${fmt(outstanding)}</span>
         <div class="bli-actions">
-          <button class="bli-expand-btn" onclick="toggleBudgetDetails(${index})" title="Details">▾</button>
+          <button class="bli-expand-btn" onclick="toggleBudgetDetails(${index})" title="Notes &amp; location">▾</button>
           ${synced
             ? `<span class="bli-sync-note" title="Edit cost in Transport tab">🔒</span>`
             : `<button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>`}
         </div>
       </div>
 
-      <!-- ── Expandable details ── -->
+      <!-- ── Expandable details (notes + location) ── -->
       <div class="bli-details" id="bli-details-${index}" style="display:none;">
         <div class="bli-details-grid">
           <div class="bli-detail-group">
             <label class="bli-detail-label">Booking Date</label>
             <input type="date" class="bli-detail-input" value="${item.bookingDate || ''}"
                    onchange="updateBudgetItem(${index},'bookingDate',this.value)">
-          </div>
-          <div class="bli-detail-group">
-            <label class="bli-detail-label">Start Date</label>
-            <input type="date" class="bli-detail-input" value="${item.startDate || ''}"
-                   onchange="updateBudgetItem(${index},'startDate',this.value)">
-          </div>
-          <div class="bli-detail-group">
-            <label class="bli-detail-label">End Date</label>
-            <input type="date" class="bli-detail-input" value="${item.endDate || ''}"
-                   onchange="updateBudgetItem(${index},'endDate',this.value)">
           </div>
           <div class="bli-detail-group bli-detail-group--wide">
             <label class="bli-detail-label">Location</label>
