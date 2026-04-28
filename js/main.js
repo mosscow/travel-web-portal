@@ -193,6 +193,9 @@ function initApp() {
     <div class="tab-panel" id="panel-2">
       <div id="settingsContainer"></div>
     </div>
+    <div class="tab-panel" id="panel-3">
+      <div id="faqContainer"></div>
+    </div>
   `;
 
   initTrips();
@@ -849,6 +852,7 @@ function switchHeaderTab(tabIndex) {
   document.getElementById(`panel-${tabIndex}`).classList.add('active');
   document.querySelectorAll('.header-tab-btn')[tabIndex].classList.add('active');
   if (tabIndex === 0) switchPlannerView(currentPlannerView);
+  if (tabIndex === 3) initFaq();
 }
 
 function switchPlannerView(view) {

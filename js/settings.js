@@ -54,6 +54,37 @@ function initSettings() {
         </div>
       </div>
 
+      <!-- GOOGLE MAPS -->
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <span class="settings-card-icon">🗺️</span>
+          <div>
+            <div class="settings-card-title">Google Maps</div>
+            <div class="settings-card-subtitle">Enable interactive maps inside section views</div>
+          </div>
+        </div>
+        <div class="settings-fields-grid">
+          <div class="settings-field settings-field-full">
+            <label class="settings-label">
+              API Key
+              <span class="settings-help-tip" title="Need help getting a key?">
+                <span class="settings-help-icon">?</span>
+                <span class="settings-help-bubble">
+                  Not sure how to get one?
+                  <a href="#" onclick="switchHeaderTab(3); return false;" class="settings-help-link">Open the FAQ guide →</a>
+                </span>
+              </span>
+            </label>
+            <input type="password" class="settings-input" id="googleMapsKey"
+                   placeholder="AIza..." value="${localStorage.getItem(CONFIG.STORAGE_KEYS.GOOGLE_MAPS_KEY) || ''}">
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button class="settings-btn" onclick="saveGoogleMapsConfig()">Save</button>
+          <div id="googleMapsMessage" class="settings-msg-wrap"></div>
+        </div>
+      </div>
+
       <!-- TELEGRAM -->
       <div class="settings-card">
         <div class="settings-card-header">
@@ -188,6 +219,26 @@ async function testClaudeConnection() {
     console.error('Test error:', error);
     document.getElementById('claudeMessage').innerHTML = showMessage('Connection failed: ' + error.message, 'error');
   }
+}
+
+/**
+ * Save Google Maps config
+ */
+function saveGoogleMapsConfig() {
+  const key = document.getElementById('googleMapsKey').value.trim();
+  const msgEl = document.getElementById('googleMapsMessage');
+
+  if (!key) {
+    msgEl.innerHTML = showMessage('Please enter an API key', 'error');
+    return;
+  }
+  if (!key.startsWith('AIza')) {
+    msgEl.innerHTML = showMessage('That doesn\'t look like a valid Maps API key — it should start with "AIza"', 'error');
+    return;
+  }
+
+  localStorage.setItem(CONFIG.STORAGE_KEYS.GOOGLE_MAPS_KEY, key);
+  msgEl.innerHTML = showMessage('Google Maps key saved!', 'success');
 }
 
 /**

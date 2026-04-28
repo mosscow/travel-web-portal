@@ -15,6 +15,7 @@ class UIComponents {
           <button class="header-tab-btn active" onclick="switchHeaderTab(0)">✈️ Trip Planner</button>
           <button class="header-tab-btn" onclick="switchHeaderTab(1)">🤖 Travel Agent</button>
           <button class="header-tab-btn" onclick="switchHeaderTab(2)">⚙️ Settings</button>
+          <button class="header-tab-btn" onclick="switchHeaderTab(3)">❓ FAQ</button>
         </div>
       </div>
     `;
