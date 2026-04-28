@@ -5,15 +5,26 @@
  */
 function initSettings() {
   const settingsContainer = document.getElementById('settingsContainer');
-  
+  const isAdmin = !window.AuthManager || window.AuthManager.getCurrentUserRole() === 'admin';
   const savedModel = localStorage.getItem('claude_model') || 'claude-opus-4-7';
 
   settingsContainer.innerHTML = `
     <div class="settings-page">
       <div class="settings-page-title">Settings</div>
 
-      <!-- CLAUDE AI -->
-      <div class="settings-card">
+      ${!isAdmin ? `
+      <div class="settings-card" style="background:#fff8e1;border-color:#ffe082;">
+        <div class="settings-card-header">
+          <span class="settings-card-icon">🔒</span>
+          <div>
+            <div class="settings-card-title">Admin Settings</div>
+            <div class="settings-card-subtitle">Claude AI, Google Maps and Telegram settings are managed by your admin</div>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- CLAUDE AI — admin only -->
+      <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
         <div class="settings-card-header">
           <span class="settings-card-icon">🤖</span>
           <div>
@@ -63,8 +74,8 @@ function initSettings() {
         </div>
       </div>
 
-      <!-- GOOGLE MAPS -->
-      <div class="settings-card">
+      <!-- GOOGLE MAPS — admin only -->
+      <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
         <div class="settings-card-header">
           <span class="settings-card-icon">🗺️</span>
           <div>
@@ -95,8 +106,8 @@ function initSettings() {
         </div>
       </div>
 
-      <!-- TELEGRAM -->
-      <div class="settings-card">
+      <!-- TELEGRAM — admin only -->
+      <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
         <div class="settings-card-header">
           <span class="settings-card-icon">✈️</span>
           <div>

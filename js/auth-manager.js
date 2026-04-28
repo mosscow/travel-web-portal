@@ -56,14 +56,14 @@ window.AuthManager = (function() {
 
   // ── Session helpers ──────────────────────────────────────────────────────────
 
-  function createSession(username, rememberMe) {
-    const authData = { username, timestamp: new Date().getTime() };
+  function createSession(username, rememberMe, role) {
+    const authData = { username, role: role || 'admin', timestamp: new Date().getTime() };
     if (rememberMe) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(authData));
     } else {
       sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(authData));
     }
-    console.log('✅ Session created for:', username);
+    console.log('✅ Session created for:', username, '| role:', authData.role);
   }
 
   // ── Credential storage (localStorage fallback) ────────────────────────────────
@@ -183,7 +183,7 @@ window.AuthManager = (function() {
 
     if (status === 200 && data.success) {
       completeSetup(); // ensure device-local flag is set
-      createSession(username, rememberMe);
+      createSession(username, rememberMe, data.role);
       return { success: true, message: 'Login successful', user: username, role: data.role };
     }
 
@@ -200,8 +200,8 @@ window.AuthManager = (function() {
         c => c.username === username && c.password === password
       );
       if (defaultMatch) {
-        createSession(username, rememberMe);
-        return { success: true, message: 'Login successful', user: username };
+        createSession(username, rememberMe, 'admin'); // bootstrap defaults are always admin
+        return { success: true, message: 'Login successful', user: username, role: 'admin' };
       }
       return { success: false, message: 'Invalid username or password' };
     }
@@ -214,8 +214,8 @@ window.AuthManager = (function() {
     if (!user) {
       return { success: false, message: 'Invalid username or password' };
     }
-    createSession(username, rememberMe);
-    return { success: true, message: 'Login successful', user: username };
+    createSession(username, rememberMe, 'admin'); // localStorage fallback — treat as admin (no role info)
+    return { success: true, message: 'Login successful', user: username, role: 'admin' };
   }
 
   // ── Session queries ──────────────────────────────────────────────────────────
@@ -228,6 +228,23 @@ window.AuthManager = (function() {
     try {
       const persistent = localStorage.getItem(STORAGE_KEY);
       if (persistent) return JSON.parse(persistent).username;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  /**
+   * Return the role stored in the current session ('admin' | 'user').
+   * Defaults to 'admin' for sessions created before role-storage was added
+   * (backward-compatible — existing users keep full access).
+   */
+  function getCurrentUserRole() {
+    try {
+      const session = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (session) return JSON.parse(session).role || 'admin';
+    } catch (e) { /* ignore */ }
+    try {
+      const persistent = localStorage.getItem(STORAGE_KEY);
+      if (persistent) return JSON.parse(persistent).role || 'admin';
     } catch (e) { /* ignore */ }
     return null;
   }
@@ -259,6 +276,7 @@ window.AuthManager = (function() {
     // Auth
     authenticate,
     getCurrentUser,
+    getCurrentUserRole,
     isAuthenticated,
     logout,
     // Setup state

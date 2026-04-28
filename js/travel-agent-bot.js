@@ -80,7 +80,20 @@ async function sendMessage(message = null) {
   // Get bot response
   document.getElementById('sendBtn').disabled = true;
   try {
-    const botResponse = await api.callClaude(input, chatHistory);
+    // Build messages: brief system context followed by the full chat history
+    const systemSeed = [
+      {
+        role: 'user',
+        content: 'You are a helpful Travel Planning Assistant for a 32-night Italy trip covering Rome, Naples, Amalfi Coast, Tuscany, Milan and Venice. Help the user plan activities, accommodation, transport and give practical travel tips. Be concise and friendly.'
+      },
+      {
+        role: 'assistant',
+        content: "I'm your Italy Travel Agent! Ask me anything about your trip — activities, hotels, getting around, local tips, and more."
+      }
+    ];
+    const result = await callClaudeAPI([...systemSeed, ...chatHistory]);
+    if (!result.success) throw new Error(result.error || 'No response from Claude');
+    const botResponse = result.message;
     addMessage(botResponse, 'bot');
     chatHistory.push({ role: 'assistant', content: botResponse });
     Storage.saveChatHistory(chatHistory);
