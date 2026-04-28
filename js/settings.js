@@ -89,7 +89,7 @@ function initSettings() {
           <span class="settings-card-icon">🔐</span>
           <div>
             <div class="settings-card-title">Account</div>
-            <div class="settings-card-subtitle">Manage your session and password</div>
+            <div class="settings-card-subtitle">Manage users, session and password</div>
           </div>
         </div>
         <div class="settings-auth-row">
@@ -98,6 +98,28 @@ function initSettings() {
             <button class="settings-btn" onclick="changePassword()">Change Password</button>
             <button class="settings-btn settings-btn-danger" onclick="logout()">Logout</button>
           </div>
+        </div>
+        <div id="authMessage" class="settings-msg-wrap"></div>
+
+        <div class="settings-section-divider"></div>
+
+        <div class="settings-subsection-title">Users</div>
+        <div id="userListContainer" class="settings-user-list"></div>
+
+        <div class="settings-subsection-title" style="margin-top:1rem;">Create New User</div>
+        <div class="settings-fields-grid">
+          <div class="settings-field">
+            <label class="settings-label">Username</label>
+            <input type="text" class="settings-input" id="newUsername" placeholder="e.g. sarah" autocomplete="off">
+          </div>
+          <div class="settings-field">
+            <label class="settings-label">Password</label>
+            <input type="password" class="settings-input" id="newUserPassword" placeholder="Min 6 characters" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button class="settings-btn settings-btn-success" onclick="createUser()">Create User</button>
+          <div id="userMessage" class="settings-msg-wrap"></div>
         </div>
       </div>
     </div>
@@ -343,16 +365,131 @@ function updateCurrentUserDisplay() {
   if (!window.AuthManager) {
     return;
   }
-  
+
   const currentUser = window.AuthManager.getCurrentUser();
   const el = document.getElementById('currentUserDisplay');
-  
+
   if (el) {
     if (currentUser) {
       el.innerHTML = '<strong>' + currentUser + '</strong><small>Session active · expires in 30 days</small>';
     } else {
       el.innerHTML = 'Not authenticated';
     }
+  }
+
+  renderUserList();
+}
+
+/**
+ * Render the list of all users in the settings card
+ */
+function renderUserList() {
+  const container = document.getElementById('userListContainer');
+  if (!container || !window.AuthManager) return;
+
+  const currentUser = window.AuthManager.getCurrentUser();
+  const credentials = window.AuthManager.loadCredentials() || [];
+  const DEFAULT_USERNAMES = ['admin', 'demo'];
+
+  if (credentials.length === 0) {
+    container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">No users found.</div>';
+    return;
+  }
+
+  container.innerHTML = credentials.map((cred, index) => {
+    const isCurrentUser = cred.username === currentUser;
+    const isBuiltIn = DEFAULT_USERNAMES.includes(cred.username);
+    const canDelete = !isCurrentUser;
+
+    let badge = '';
+    if (isCurrentUser) badge += ' <span class="user-badge user-badge-you">you</span>';
+    if (isBuiltIn) badge += ' <span class="user-badge user-badge-builtin">built-in</span>';
+
+    const deleteBtn = canDelete
+      ? `<button class="settings-btn settings-btn-danger settings-btn-sm" onclick="deleteUser('${cred.username}')">Delete</button>`
+      : `<button class="settings-btn settings-btn-sm" disabled title="Can't delete your own account">Delete</button>`;
+
+    return `
+      <div class="user-list-row">
+        <span class="user-list-name">${cred.username}${badge}</span>
+        ${deleteBtn}
+      </div>`;
+  }).join('');
+}
+
+/**
+ * Create a new user account
+ */
+function createUser() {
+  const usernameEl = document.getElementById('newUsername');
+  const passwordEl = document.getElementById('newUserPassword');
+  const msgEl = document.getElementById('userMessage');
+
+  const username = usernameEl.value.trim().toLowerCase();
+  const password = passwordEl.value;
+
+  if (!username) {
+    msgEl.innerHTML = showMessage('Please enter a username', 'error');
+    return;
+  }
+  if (username.length < 2) {
+    msgEl.innerHTML = showMessage('Username must be at least 2 characters', 'error');
+    return;
+  }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    msgEl.innerHTML = showMessage('Username can only contain letters, numbers, and underscores', 'error');
+    return;
+  }
+  if (!password || password.length < 6) {
+    msgEl.innerHTML = showMessage('Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  const credentials = window.AuthManager.loadCredentials() || [];
+  const exists = credentials.find(c => c.username === username);
+  if (exists) {
+    msgEl.innerHTML = showMessage('Username "' + username + '" already exists', 'error');
+    return;
+  }
+
+  credentials.push({ username, password });
+
+  if (window.AuthManager.saveCredentials(credentials)) {
+    usernameEl.value = '';
+    passwordEl.value = '';
+    msgEl.innerHTML = showMessage('User "' + username + '" created successfully!', 'success');
+    renderUserList();
+  } else {
+    msgEl.innerHTML = showMessage('Error saving user — please try again', 'error');
+  }
+}
+
+/**
+ * Delete a user account
+ */
+function deleteUser(username) {
+  const currentUser = window.AuthManager ? window.AuthManager.getCurrentUser() : null;
+
+  if (username === currentUser) {
+    document.getElementById('userMessage').innerHTML = showMessage("You can't delete your own account while logged in", 'error');
+    return;
+  }
+
+  const DEFAULT_USERNAMES = ['admin', 'demo'];
+  const warningText = DEFAULT_USERNAMES.includes(username)
+    ? `"${username}" is a built-in account. Deleting it from this list won't disable the default login. Delete anyway?`
+    : `Delete user "${username}"? This cannot be undone.`;
+
+  if (!confirm(warningText)) return;
+
+  const credentials = window.AuthManager.loadCredentials() || [];
+  const updated = credentials.filter(c => c.username !== username);
+
+  if (window.AuthManager.saveCredentials(updated)) {
+    document.getElementById('userMessage').innerHTML = showMessage('User "' + username + '" deleted.', 'success');
+    renderUserList();
+  } else {
+    document.getElementById('userMessage').innerHTML = showMessage('Error deleting user', 'error');
   }
 }
 

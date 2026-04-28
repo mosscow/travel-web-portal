@@ -1764,6 +1764,76 @@
   flex-shrink: 0;
 }
 
+/* ── Settings — User Management ───────────────────────── */
+
+.settings-section-divider {
+  height: 0.5px;
+  background: var(--color-border-tertiary);
+  margin: 1rem 0;
+}
+
+.settings-subsection-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-secondary);
+  padding: 0 16px;
+  margin-bottom: 8px;
+}
+
+.settings-user-list {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.user-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-tertiary);
+  gap: 12px;
+}
+
+.user-list-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.user-badge-you {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.user-badge-builtin {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.settings-btn-sm {
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  min-width: auto !important;
+}
+
 /* ── Flights Page ─────────────────────────────────────── */
 
 .flights-page {
