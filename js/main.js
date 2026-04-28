@@ -176,6 +176,45 @@ function initApp() {
 
       <div id="flightsSubView" style="display:none;">
         <div class="flights-page">
+
+          <!-- ── Google Flights Search Panel ── -->
+          <div class="gf-panel">
+            <div class="gf-panel-title">🔍 Search Google Flights</div>
+            <div class="gf-fields-row">
+              <div class="gf-field gf-field-airport">
+                <label class="gf-label">From</label>
+                <input type="text" id="gfFrom" class="gf-input" placeholder="SYD or Sydney">
+              </div>
+              <button class="gf-swap-btn" onclick="swapFlightEndpoints()" title="Swap">⇌</button>
+              <div class="gf-field gf-field-airport">
+                <label class="gf-label">To</label>
+                <input type="text" id="gfTo" class="gf-input" placeholder="FCO or Rome">
+              </div>
+              <div class="gf-field gf-field-date">
+                <label class="gf-label">Depart</label>
+                <input type="date" id="gfDepart" class="gf-input">
+              </div>
+              <div class="gf-field gf-field-date">
+                <label class="gf-label">Return <span class="gf-optional">(optional)</span></label>
+                <input type="date" id="gfReturn" class="gf-input">
+              </div>
+              <div class="gf-field gf-field-sm">
+                <label class="gf-label">Pax</label>
+                <input type="number" id="gfPax" class="gf-input" value="1" min="1" max="9">
+              </div>
+              <div class="gf-field gf-field-class">
+                <label class="gf-label">Class</label>
+                <select id="gfClass" class="gf-input gf-select">
+                  <option value="f">Economy</option>
+                  <option value="w">Premium Economy</option>
+                  <option value="j">Business</option>
+                  <option value="c">First</option>
+                </select>
+              </div>
+              <button class="gf-search-btn" onclick="openGoogleFlights()">Search Google Flights ✈️</button>
+            </div>
+          </div>
+
           <div class="flights-page-header">
             <div>
               <div class="flights-page-title">Flight Tracker</div>
@@ -1310,7 +1349,58 @@ const FLIGHT_STATUS_COLORS = {
   'Booked': '#1976d2',     'Confirmed': '#2e7d32', 'Checked In': '#388e3c'
 };
 
+// ─── Google Flights Search ────────────────────────────────────────────────────
+
+function populateFlightSearchDefaults() {
+  const sections = (TRIP_DATA.sections || []).filter(s => s.startDate || s.endDate);
+  if (sections.length > 0) {
+    const first = sections[0];
+    const last  = sections[sections.length - 1];
+    const depart = document.getElementById('gfDepart');
+    const ret    = document.getElementById('gfReturn');
+    if (depart && first.startDate) depart.value = first.startDate;
+    if (ret    && last.endDate)    ret.value    = last.endDate;
+  }
+}
+
+function swapFlightEndpoints() {
+  const fromEl = document.getElementById('gfFrom');
+  const toEl   = document.getElementById('gfTo');
+  if (!fromEl || !toEl) return;
+  const tmp    = fromEl.value;
+  fromEl.value = toEl.value;
+  toEl.value   = tmp;
+}
+
+function openGoogleFlights() {
+  const from   = (document.getElementById('gfFrom')?.value  || '').trim();
+  const to     = (document.getElementById('gfTo')?.value    || '').trim();
+  const depart = (document.getElementById('gfDepart')?.value || '').trim();
+  const ret    = (document.getElementById('gfReturn')?.value || '').trim();
+  const pax    = parseInt(document.getElementById('gfPax')?.value  || '1') || 1;
+  const cls    = document.getElementById('gfClass')?.value  || 'f';
+  const cur    = (TRIP_DATA.budget?.currency || 'AUD').toUpperCase();
+
+  if (!from || !to) {
+    alert('Please enter both a From and To airport or city.');
+    return;
+  }
+
+  // Build segment strings: FROM.TO.DATE  (* = onward leg)
+  let flt = `${encodeURIComponent(from)}.${encodeURIComponent(to)}`;
+  if (depart) flt += `.${depart}`;
+  if (ret) {
+    flt += `*${encodeURIComponent(to)}.${encodeURIComponent(from)}.${ret}`;
+  }
+
+  const url = `https://www.google.com/flights#flt=${flt};c:${cur};e:${pax};sd:1;t:${cls}`;
+  window.open(url, '_blank');
+}
+
+// ─── Flight Tracker ───────────────────────────────────────────────────────────
+
 function renderFlights() {
+  populateFlightSearchDefaults();
   const container = document.getElementById('flightsContent');
   if (!container) return;
   if (!TRIP_DATA.flights) TRIP_DATA.flights = [];

@@ -2381,6 +2381,126 @@ code {
 
 /* ── Flights Page ─────────────────────────────────────── */
 
+/* ── Google Flights Search Panel ──────────────────────── */
+
+.gf-panel {
+  padding: 1rem 1.5rem 1.25rem;
+  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+  border-bottom: 0.5px solid #283593;
+}
+
+.gf-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.75);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 0.75rem;
+}
+
+.gf-fields-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 90px;
+}
+
+.gf-field-airport { min-width: 130px; flex: 1.5; }
+.gf-field-date    { min-width: 130px; }
+.gf-field-sm      { min-width: 60px;  max-width: 72px; flex: 0 0 72px; }
+.gf-field-class   { min-width: 130px; }
+
+.gf-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255,255,255,0.65);
+}
+
+.gf-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+.gf-input {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.gf-input::placeholder { color: rgba(255,255,255,0.4); }
+
+.gf-input:focus {
+  border-color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.2);
+}
+
+.gf-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; cursor: pointer; }
+
+.gf-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.6)'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.gf-select option { background: #1a237e; color: #fff; }
+
+.gf-swap-btn {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: flex-end;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.gf-swap-btn:hover { background: rgba(255,255,255,0.22); }
+
+.gf-search-btn {
+  padding: 8px 18px;
+  background: #4285f4;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: flex-end;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.gf-search-btn:hover { background: #3367d6; }
+
+/* ── Flight Tracker ────────────────────────────────────── */
+
 .flights-page {
   display: flex;
   flex-direction: column;
