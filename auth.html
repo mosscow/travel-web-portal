@@ -178,6 +178,13 @@
       }
     });
 
+    // Show setup-complete notice when redirected from setup.html
+    if (new URLSearchParams(window.location.search).get('setup') === 'done') {
+      const msgEl = document.getElementById('message');
+      msgEl.textContent = 'Account created! Log in with your new username and password.';
+      msgEl.className = 'message success';
+    }
+
     function resetCredentials() {
       if (confirm('This will reset ALL credentials back to factory defaults (admin/travel2027).\n\nYou will need to go through first-time setup again. Continue?')) {
         localStorage.removeItem('travel-portal-credentials');
