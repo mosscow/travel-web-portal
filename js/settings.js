@@ -23,7 +23,16 @@ function initSettings() {
         </div>
         <div class="settings-fields-grid">
           <div class="settings-field settings-field-full">
-            <label class="settings-label">API Key</label>
+            <label class="settings-label">
+              API Key
+              <span class="settings-help-tip">
+                <span class="settings-help-icon">?</span>
+                <span class="settings-help-bubble">
+                  Need an Anthropic API key?
+                  <a href="#" onclick="openFaq('faq-claude'); return false;" class="settings-help-link">See the FAQ guide →</a>
+                </span>
+              </span>
+            </label>
             <input type="password" class="settings-input" id="claudeApiKey"
                    placeholder="sk-ant-..." value="${localStorage.getItem(CONFIG.STORAGE_KEYS.CLAUDE_API_KEY) || ''}">
           </div>
@@ -71,7 +80,7 @@ function initSettings() {
                 <span class="settings-help-icon">?</span>
                 <span class="settings-help-bubble">
                   Not sure how to get one?
-                  <a href="#" onclick="switchHeaderTab(3); return false;" class="settings-help-link">Open the FAQ guide →</a>
+                  <a href="#" onclick="openFaq('faq-google-maps'); return false;" class="settings-help-link">Open the FAQ guide →</a>
                 </span>
               </span>
             </label>
@@ -96,7 +105,16 @@ function initSettings() {
         </div>
         <div class="settings-fields-grid">
           <div class="settings-field">
-            <label class="settings-label">Bot Token</label>
+            <label class="settings-label">
+              Bot Token
+              <span class="settings-help-tip">
+                <span class="settings-help-icon">?</span>
+                <span class="settings-help-bubble">
+                  Need to set up a Telegram bot?
+                  <a href="#" onclick="openFaq('faq-telegram'); return false;" class="settings-help-link">See the FAQ guide →</a>
+                </span>
+              </span>
+            </label>
             <input type="password" class="settings-input" id="telegramToken"
                    placeholder="123456:ABC-DEF..." value="${localStorage.getItem('telegram_token') || ''}">
           </div>

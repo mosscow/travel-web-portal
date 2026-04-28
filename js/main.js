@@ -855,6 +855,17 @@ function switchHeaderTab(tabIndex) {
   if (tabIndex === 3) initFaq();
 }
 
+function openFaq(sectionId) {
+  switchHeaderTab(3);
+  if (sectionId) {
+    // Give the FAQ a tick to render before scrolling
+    setTimeout(() => {
+      const el = document.getElementById(sectionId);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+}
+
 function switchPlannerView(view) {
   currentPlannerView = view;
   document.getElementById('plannerMainView').style.display = view === 'planner' ? '' : 'none';
