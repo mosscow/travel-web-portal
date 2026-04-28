@@ -101,10 +101,7 @@ function initApp() {
             <div class="map-container">
               <div class="map-area">
                 <div class="map-title" id="mapTabTitle">📍 Section 1 - Rome - Map</div>
-                <div class="map-placeholder">
-                  Google Maps embed<br/>
-                  <span style="font-size:12px;margin-top:8px;display:block;">Map showing all activity & accommodation pins for this section</span>
-                </div>
+                <div id="googleMap" class="google-map-embed"></div>
               </div>
               <div class="map-sidebar">
                 <div class="sidebar-section">
@@ -1075,6 +1072,12 @@ function switchSegmentTab(tabIndex) {
   document.querySelectorAll('.segment-tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(`segTab-${tabIndex}`).classList.add('active');
   document.querySelectorAll('.segment-tab-btn')[tabIndex].classList.add('active');
+
+  // Tab 3 = Map — initialise the live Google Map whenever it's shown
+  if (tabIndex === 3 && typeof initSectionMap === 'function') {
+    const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+    if (segment) initSectionMap(segment);
+  }
 }
 
 // ─── Activities ───────────────────────────────────────────────────────────────

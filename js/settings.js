@@ -90,6 +90,7 @@ function initSettings() {
         </div>
         <div class="settings-actions">
           <button class="settings-btn" onclick="saveGoogleMapsConfig()">Save</button>
+          <button class="settings-btn settings-btn-success" onclick="testGoogleMapsKey()">Test Key</button>
           <div id="googleMapsMessage" class="settings-msg-wrap"></div>
         </div>
       </div>
@@ -164,20 +165,22 @@ function initSettings() {
         </div>
         <div id="userListContainer" class="settings-user-list"></div>
 
-        <div class="settings-subsection-title" style="margin-top:1rem;">Create New User</div>
-        <div class="settings-fields-grid">
-          <div class="settings-field">
-            <label class="settings-label">Username</label>
-            <input type="text" class="settings-input" id="newUsername" placeholder="e.g. sarah" autocomplete="off">
+        <div id="createUserSection">
+          <div class="settings-subsection-title" style="margin-top:1rem;">Create New User</div>
+          <div class="settings-fields-grid">
+            <div class="settings-field">
+              <label class="settings-label">Username</label>
+              <input type="text" class="settings-input" id="newUsername" placeholder="e.g. sarah" autocomplete="off">
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Password</label>
+              <input type="password" class="settings-input" id="newUserPassword" placeholder="Min 6 characters" autocomplete="new-password">
+            </div>
           </div>
-          <div class="settings-field">
-            <label class="settings-label">Password</label>
-            <input type="password" class="settings-input" id="newUserPassword" placeholder="Min 6 characters" autocomplete="new-password">
+          <div class="settings-actions">
+            <button class="settings-btn settings-btn-success" onclick="createUser()">Create User</button>
+            <div id="userMessage" class="settings-msg-wrap"></div>
           </div>
-        </div>
-        <div class="settings-actions">
-          <button class="settings-btn settings-btn-success" onclick="createUser()">Create User</button>
-          <div id="userMessage" class="settings-msg-wrap"></div>
         </div>
       </div>
     </div>
@@ -515,6 +518,14 @@ async function renderUserList() {
     });
   }
 
+  // Show or hide the Create User section based on whether current user is admin
+  const currentUserRow  = allRows.find(u => u.username === currentUser);
+  const currentUserRole = currentUserRow ? (currentUserRow.role || 'user') : 'user';
+  const createSection   = document.getElementById('createUserSection');
+  if (createSection) {
+    createSection.style.display = currentUserRole === 'admin' ? '' : 'none';
+  }
+
   if (allRows.length === 0) {
     container.innerHTML = '<div style="color:#888;font-size:13px;padding:0.5rem 0;">No users found.</div>';
     return;
@@ -588,8 +599,9 @@ async function createUser() {
   msgEl.innerHTML = showMessage('Creating user…', 'info');
 
   // ── Try API ────────────────────────────────────────────────────────────────
+  const requestingUser = window.AuthManager.getCurrentUser();
   const { status, data } = await window.AuthManager.callUsersAPI('POST', {
-    action: 'create', username, password
+    action: 'create', username, password, requestingUser
   });
 
   if (status === 200 && data.success) {
@@ -661,7 +673,8 @@ async function deleteUser(username) {
   msgEl.innerHTML = showMessage('Deleting…', 'info');
 
   // ── Try API ────────────────────────────────────────────────────────────────
-  const { status, data } = await window.AuthManager.callUsersAPI('DELETE', { username });
+  const requestingUser = window.AuthManager.getCurrentUser();
+  const { status, data } = await window.AuthManager.callUsersAPI('DELETE', { username, requestingUser });
 
   if (status === 200 && data.success) {
     msgEl.innerHTML = showMessage('User "' + username + '" deleted.', 'success');

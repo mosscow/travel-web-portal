@@ -94,7 +94,7 @@ export default async function handler(req, res) {
 
     // Create user
     if (action === 'create') {
-      const { username, password } = body;
+      const { username, password, requestingUser } = body;
       if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
       }
@@ -105,6 +105,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
       const users = await kvGet(USERS_KEY) || [];
+
+      // First user can always be created (bootstrap). After that, require admin.
+      if (users.length > 0) {
+        const requester = requestingUser ? users.find(u => u.username === requestingUser) : null;
+        if (!requester || requester.role !== 'admin') {
+          return res.status(403).json({ error: 'Only admins can create new users' });
+        }
+      }
+
       if (users.find(u => u.username === username)) {
         return res.status(409).json({ error: `Username "${username}" is already taken` });
       }
@@ -139,13 +148,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Unknown action' });
   }
 
-  // ── DELETE — remove a user ──────────────────────────────────────────────────
+  // ── DELETE — remove a user (admin only) ────────────────────────────────────
   if (req.method === 'DELETE') {
-    const { username } = req.body || {};
+    const { username, requestingUser } = req.body || {};
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
     const users = await kvGet(USERS_KEY) || [];
+
+    // Verify the requester is an admin
+    const requester = requestingUser ? users.find(u => u.username === requestingUser) : null;
+    if (!requester || requester.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can delete users' });
+    }
+    if (username === requestingUser) {
+      return res.status(400).json({ error: 'You cannot delete your own account' });
+    }
+
     const updated = users.filter(u => u.username !== username);
     if (updated.length === users.length) {
       return res.status(404).json({ error: `User "${username}" not found` });
