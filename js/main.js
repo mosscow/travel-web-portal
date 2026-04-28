@@ -134,8 +134,26 @@ function initApp() {
           <div class="budget-page-body">
             <div class="budget-top-row">
               <div class="budget-field">
-                <label class="budget-label">Currency</label>
-                <select id="budgetCurrency" class="budget-currency-select" onchange="saveBudget()">
+                <label class="budget-label">Local Currency</label>
+                <select id="budgetLocalCurrency" class="budget-currency-select" onchange="saveBudget(); syncFxPanel()">
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="GBP">GBP</option>
+                  <option value="JPY">JPY</option>
+                  <option value="THB">THB</option>
+                  <option value="SGD">SGD</option>
+                  <option value="CHF">CHF</option>
+                  <option value="AUD">AUD</option>
+                  <option value="NZD">NZD</option>
+                  <option value="CAD">CAD</option>
+                  <option value="HKD">HKD</option>
+                  <option value="MXN">MXN</option>
+                  <option value="INR">INR</option>
+                </select>
+              </div>
+              <div class="budget-field">
+                <label class="budget-label">Home Currency</label>
+                <select id="budgetCurrency" class="budget-currency-select" onchange="saveBudget(); syncFxPanel()">
                   <option value="AUD">AUD</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
@@ -644,12 +662,17 @@ function toggleBudgetAccordion() {
 }
 
 const BUDGET_STANDARD_CATEGORIES = [
-  { key: 'accommodation', label: '🏨 Accommodation' },
   { key: 'flights',       label: '✈️ Flights' },
-  { key: 'food',          label: '🍽️ Food & Dining' },
-  { key: 'activities',    label: '🎭 Activities' },
+  { key: 'accommodation', label: '🏨 Accommodation' },
   { key: 'transport',     label: '🚌 Transport' },
-  { key: 'other',         label: '📦 Other' }
+  { key: 'food',          label: '🍽️ Food & Dining' },
+  { key: 'activities',    label: '🎭 Activities & Tours' },
+  { key: 'shopping',      label: '🛍️ Shopping' },
+  { key: 'insurance',     label: '🛡️ Travel Insurance' },
+  { key: 'visas',         label: '🪪 Visas & Entry Fees' },
+  { key: 'health',        label: '⚕️ Health & Medical' },
+  { key: 'comms',         label: '📱 Communications' },
+  { key: 'misc',          label: '📦 Misc / Other' },
 ];
 
 function getBudgetCategories() {
@@ -663,28 +686,39 @@ function getBudgetCategories() {
 function renderBudget() {
   const b = TRIP_DATA.budget;
   if (!b) return;
-  const currEl = document.getElementById('budgetCurrency');
-  if (currEl) currEl.value = b.currency || 'AUD';
+  const homeCurrEl  = document.getElementById('budgetCurrency');
+  if (homeCurrEl)  homeCurrEl.value  = b.currency      || 'AUD';
+  const localCurrEl = document.getElementById('budgetLocalCurrency');
+  if (localCurrEl) localCurrEl.value = b.localCurrency || 'EUR';
   const totalEl = document.getElementById('budgetTotal');
   if (totalEl) totalEl.value = b.total || '';
-  // Pre-set converter "To" currency to match budget currency
-  const fxTo = document.getElementById('fxTo');
-  if (fxTo && b.currency) fxTo.value = b.currency;
+  syncFxPanel();
   renderBudgetCategories();
   renderBudgetItems();
   updateBudgetSummary();
-  runFxConvert();
 }
 
 function saveBudget() {
   if (!TRIP_DATA.budget) {
-    TRIP_DATA.budget = { total: 0, currency: 'AUD', customCategories: [], items: [] };
+    TRIP_DATA.budget = { total: 0, currency: 'AUD', localCurrency: 'EUR', customCategories: [], items: [] };
   }
-  TRIP_DATA.budget.currency = document.getElementById('budgetCurrency').value;
-  TRIP_DATA.budget.total = parseFloat(document.getElementById('budgetTotal').value) || 0;
+  TRIP_DATA.budget.currency      = document.getElementById('budgetCurrency').value;
+  TRIP_DATA.budget.localCurrency = document.getElementById('budgetLocalCurrency')?.value || 'EUR';
+  TRIP_DATA.budget.total         = parseFloat(document.getElementById('budgetTotal').value) || 0;
   Storage.saveTripData(TRIP_DATA);
   updateBudgetSummary();
   showSavedIndicator();
+}
+
+function getLocalCurrency()  { return TRIP_DATA.budget?.localCurrency || 'EUR'; }
+function getHomeCurrency()   { return TRIP_DATA.budget?.currency       || 'AUD'; }
+
+function syncFxPanel() {
+  const localEl = document.getElementById('fxFrom');
+  const homeEl  = document.getElementById('fxTo');
+  if (localEl) localEl.value = getLocalCurrency();
+  if (homeEl)  homeEl.value  = getHomeCurrency();
+  runFxConvert();
 }
 
 function updateBudgetSummary() {
@@ -770,19 +804,23 @@ function buildBudgetItemCard(item, index) {
   const outstanding = Math.max(0, (item.totalAmount || 0) - (item.depositPaid || 0));
   const currency = TRIP_DATA.budget?.currency || 'AUD';
   const fmt = n => Math.round(n).toLocaleString();
+  const synced = item._transportSync;
+  const syncBadge = synced ? `<span class="budget-sync-badge" title="Auto-synced from Transport tab">🚌 Transport</span>` : '';
+  const ro = synced ? 'readonly disabled' : '';
 
   return `
-    <div class="budget-item-card">
+    <div class="budget-item-card${synced ? ' budget-item-synced' : ''}">
       <div class="budget-item-header">
         <span class="budget-item-num">${index + 1}</span>
+        ${syncBadge}
         <input type="text" class="budget-item-desc" value="${UIComponents.escapeHtml(item.description || '')}"
-               placeholder="Description" onchange="updateBudgetItem(${index}, 'description', this.value)">
-        <select class="budget-item-cat" onchange="updateBudgetItem(${index}, 'category', this.value)">
+               placeholder="Description" ${ro} onchange="updateBudgetItem(${index}, 'description', this.value)">
+        <select class="budget-item-cat" ${ro} onchange="updateBudgetItem(${index}, 'category', this.value)">
           ${catOptions}
         </select>
         <input type="text" class="budget-item-ref" value="${UIComponents.escapeHtml(item.refNum || '')}"
-               placeholder="Ref #" onchange="updateBudgetItem(${index}, 'refNum', this.value)">
-        <button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>
+               placeholder="Ref #" ${ro} onchange="updateBudgetItem(${index}, 'refNum', this.value)">
+        ${synced ? `<span class="budget-sync-note">Edit in Transport tab</span>` : `<button class="btn-remove-budget-item" onclick="removeBudgetItem(${index})">×</button>`}
       </div>
       <div class="budget-item-dates-row">
         <div class="budget-date-group">
@@ -823,13 +861,13 @@ function buildBudgetItemCard(item, index) {
 }
 
 function addBudgetItem() {
-  if (!TRIP_DATA.budget) TRIP_DATA.budget = { total: 0, currency: 'AUD', customCategories: [], items: [] };
+  if (!TRIP_DATA.budget) TRIP_DATA.budget = { total: 0, currency: 'AUD', localCurrency: 'EUR', customCategories: [], items: [] };
   if (!TRIP_DATA.budget.items) TRIP_DATA.budget.items = [];
   TRIP_DATA.budget.items.push({
     id: Date.now(),
     bookingDate: '',
     description: '',
-    category: 'accommodation',
+    category: BUDGET_STANDARD_CATEGORIES[0].key,
     refNum: '',
     startDate: '',
     endDate: '',
@@ -1638,6 +1676,79 @@ function renderTransportContent(segment) {
     return;
   }
   container.innerHTML = segment.transports.map((t, idx) => buildTransportCard(t, idx)).join('');
+  // Populate FX conversion labels after DOM is ready
+  segment.transports.forEach((_, idx) => refreshTransportCostFx(idx));
+}
+
+// Parse cost that may be stored as a legacy text string like "€150"
+function parseTransportCost(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return parseFloat(String(val).replace(/[^0-9.]/g, '')) || 0;
+}
+
+async function refreshTransportCostFx(idx) {
+  const el = document.getElementById(`transport-cost-fx-${idx}`);
+  if (!el) return;
+  const segment = TRIP_DATA.sections.find(s => s.id === currentSegmentId);
+  const t = segment?.transports?.[idx];
+  if (!t) return;
+  const cost = parseTransportCost(t.cost);
+  const localCur = getLocalCurrency();
+  const homeCur  = getHomeCurrency();
+  if (cost <= 0 || localCur === homeCur) { el.textContent = ''; return; }
+  el.textContent = '…';
+  const data = await fetchFxRates(localCur, homeCur);
+  if (!data) { el.textContent = ''; return; }
+  el.textContent = `≈ ${homeCur} ${(cost * data.current).toFixed(2)}`;
+}
+
+async function syncTransportsToBudget() {
+  if (!TRIP_DATA.budget) return;
+  if (!TRIP_DATA.budget.items) TRIP_DATA.budget.items = [];
+
+  const localCur = getLocalCurrency();
+  const homeCur  = getHomeCurrency();
+
+  // Gather all transports with a cost across all sections
+  const allTransports = [];
+  for (const section of (TRIP_DATA.sections || [])) {
+    for (const t of (section.transports || [])) {
+      const cost = parseTransportCost(t.cost);
+      if (cost > 0) allTransports.push({ ...t, cost, sectionName: section.name });
+    }
+  }
+
+  // Remove previously auto-synced items, keep manual ones
+  TRIP_DATA.budget.items = TRIP_DATA.budget.items.filter(item => !item._transportSync);
+
+  if (allTransports.length > 0) {
+    let rate = 1;
+    if (localCur !== homeCur) {
+      const fxData = await fetchFxRates(localCur, homeCur);
+      if (fxData) rate = fxData.current;
+    }
+    for (const t of allTransports) {
+      TRIP_DATA.budget.items.push({
+        id:              t.id || Date.now() + Math.random(),
+        _transportSync:  true,
+        description:     t.title || `${t.from || '?'} → ${t.to || '?'}`,
+        category:        'transport',
+        refNum:          t.bookingRef || '',
+        startDate:       t.startDate  || t.date || '',
+        endDate:         t.endDate    || '',
+        totalAmount:     Math.round(t.cost * rate * 100) / 100,
+        depositPaid:     0,
+        bookingDate:     '',
+      });
+    }
+  }
+
+  Storage.saveTripData(TRIP_DATA);
+  if (currentPlannerView === 'budget') {
+    renderBudgetItems();
+    updateBudgetSummary();
+  }
 }
 
 function calcTransportDuration(startDate, startTime, endDate, endTime) {
@@ -1740,9 +1851,11 @@ function buildTransportCard(t, idx) {
                  onchange="updateTransport(${idx},'endTime',this.value); refreshTransportTravelTime(${idx})">
         </div>
         <div class="transport-meta-group">
-          <label class="field-label">Cost</label>
-          <input type="text" class="transport-meta-input" value="${esc(t.cost)}"
-                 placeholder="e.g. €25" onchange="updateTransport(${idx},'cost',this.value)">
+          <label class="field-label">Cost (${getLocalCurrency()})</label>
+          <input type="number" class="transport-meta-input" value="${parseTransportCost(t.cost) || ''}"
+                 placeholder="0" min="0" step="0.01"
+                 oninput="updateTransport(${idx},'cost',parseFloat(this.value)||0); refreshTransportCostFx(${idx})">
+          <div class="transport-cost-fx" id="transport-cost-fx-${idx}"></div>
         </div>
         <div class="transport-meta-group">
           <label class="field-label">Ref #</label>
@@ -1864,6 +1977,7 @@ function removeTransport(idx) {
   renderTransportContent(segment);
   Storage.saveTripData(TRIP_DATA);
   showSavedIndicator('Transport removed');
+  syncTransportsToBudget();
 }
 
 function updateTransport(idx, field, value) {
@@ -1872,6 +1986,7 @@ function updateTransport(idx, field, value) {
   segment.transports[idx][field] = value;
   Storage.saveTripData(TRIP_DATA);
   showSavedIndicator();
+  syncTransportsToBudget();
 }
 
 function openDirections(idx) {
