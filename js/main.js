@@ -1754,6 +1754,17 @@ function buildTransportCard(t, idx) {
       <div class="transport-travel-time-row" id="transport-tt-${idx}">${travelTimeHtml}</div>
 
       <div class="activity-field">
+        <label class="field-label">Booking URL</label>
+        <div class="booking-url-wrap">
+          <input type="text" class="activity-search booking-url-input" value="${esc(t.bookingUrl)}"
+                 placeholder="https://booking.com/..."
+                 id="transport-url-${idx}"
+                 oninput="updateTransport(${idx},'bookingUrl',this.value); refreshTransportUrlBtn(${idx})">
+          ${t.bookingUrl ? `<a class="btn-booking-link" id="transport-url-btn-${idx}" href="${esc(t.bookingUrl)}" target="_blank" rel="noopener">🔗 Open</a>` : `<a class="btn-booking-link btn-booking-link--hidden" id="transport-url-btn-${idx}" href="#" target="_blank" rel="noopener">🔗 Open</a>`}
+        </div>
+      </div>
+
+      <div class="activity-field">
         <label class="field-label">Notes</label>
         <textarea class="activity-notes-input"
                   placeholder="Pickup details, platform, luggage, booking instructions…"
@@ -1765,6 +1776,34 @@ function buildTransportCard(t, idx) {
         <button class="btn-map-link"   onclick="goToMap('transport',${idx})">📍 View on map</button>
       </div>
     </div>`;
+}
+
+function refreshTransportUrlBtn(idx) {
+  const input = document.getElementById(`transport-url-${idx}`);
+  const btn   = document.getElementById(`transport-url-btn-${idx}`);
+  if (!input || !btn) return;
+  const url = input.value.trim();
+  if (url) {
+    btn.href = url;
+    btn.classList.remove('btn-booking-link--hidden');
+  } else {
+    btn.href = '#';
+    btn.classList.add('btn-booking-link--hidden');
+  }
+}
+
+function refreshAccomUrlBtn(idx) {
+  const input = document.getElementById(`accom-url-${idx}`);
+  const btn   = document.getElementById(`accom-url-btn-${idx}`);
+  if (!input || !btn) return;
+  const url = input.value.trim();
+  if (url) {
+    btn.href = url;
+    btn.classList.remove('btn-booking-link--hidden');
+  } else {
+    btn.href = '#';
+    btn.classList.add('btn-booking-link--hidden');
+  }
 }
 
 function refreshTransportTravelTime(idx) {
@@ -1796,6 +1835,7 @@ function addTransport() {
     endTime: '',
     cost: '',
     bookingRef: '',
+    bookingUrl: '',
     notes: '',
   });
   renderTransportContent(segment);
@@ -1899,8 +1939,13 @@ function buildAccommodationCard(a, idx) {
 
       <div class="activity-field">
         <label class="field-label">Booking URL</label>
-        <input type="text" class="activity-search" value="${esc(a.url)}"
-               placeholder="https://booking.com/..." onchange="updateAccommodation(${idx},'url',this.value)">
+        <div class="booking-url-wrap">
+          <input type="text" class="activity-search booking-url-input" value="${esc(a.url)}"
+                 placeholder="https://booking.com/..."
+                 id="accom-url-${idx}"
+                 oninput="updateAccommodation(${idx},'url',this.value); refreshAccomUrlBtn(${idx})">
+          ${a.url ? `<a class="btn-booking-link" id="accom-url-btn-${idx}" href="${esc(a.url)}" target="_blank" rel="noopener">🔗 Open</a>` : `<a class="btn-booking-link btn-booking-link--hidden" id="accom-url-btn-${idx}" href="#" target="_blank" rel="noopener">🔗 Open</a>`}
+        </div>
       </div>
 
       <div class="activity-field">
