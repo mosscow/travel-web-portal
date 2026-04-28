@@ -92,7 +92,49 @@ export default async function handler(req, res) {
       return res.json({ success: true, username: user.username, role: user.role || 'user' });
     }
 
-    // Create user
+    // ── Register (open self-registration, no admin required) ──────────────────
+    // Used by setup.html. First account gets 'admin', subsequent get 'user'.
+    if (action === 'register') {
+      const { username, password } = body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+      if (username.length < 2 || !/^[a-z0-9_]+$/.test(username)) {
+        return res.status(400).json({ error: 'Username must be 2+ lowercase letters, numbers or underscores' });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+      const users = await kvGet(USERS_KEY) || [];
+      if (users.find(u => u.username === username)) {
+        return res.status(409).json({ error: `Username "${username}" is already taken` });
+      }
+      const role = users.length === 0 ? 'admin' : 'user';
+      users.push({ username, passwordHash: hashPassword(password), role, createdAt: new Date().toISOString() });
+      await kvSet(USERS_KEY, users);
+      return res.json({ success: true, role });
+    }
+
+    // ── Sync (migrate a localStorage user to KV silently on login) ────────────
+    // Upserts the user into KV so they become available cross-device.
+    // No admin check: the caller has already authenticated locally.
+    if (action === 'sync') {
+      const { username, password } = body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+      const users = await kvGet(USERS_KEY) || [];
+      if (users.find(u => u.username === username)) {
+        return res.json({ success: true, synced: false, reason: 'already_exists' });
+      }
+      const role = users.length === 0 ? 'admin' : 'user';
+      users.push({ username, passwordHash: hashPassword(password), role, createdAt: new Date().toISOString() });
+      await kvSet(USERS_KEY, users);
+      console.log(`Synced localStorage user "${username}" to KV with role "${role}"`);
+      return res.json({ success: true, synced: true, role });
+    }
+
+    // Create user (admin-only, used by Settings)
     if (action === 'create') {
       const { username, password, requestingUser } = body;
       if (!username || !password) {

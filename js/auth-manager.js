@@ -215,6 +215,12 @@ window.AuthManager = (function() {
       return { success: false, message: 'Invalid username or password' };
     }
     createSession(username, rememberMe, 'admin'); // localStorage fallback — treat as admin (no role info)
+
+    // Fire-and-forget: silently sync this localStorage user to KV so they
+    // become available cross-device next time they log in from any device.
+    callUsersAPI('POST', { action: 'sync', username, password })
+      .then(function(r) { if (r.status === 200 && r.data.synced) console.log('✅ Synced to KV:', username); })
+      .catch(function() {}); // never block login on sync failure
     return { success: true, message: 'Login successful', user: username, role: 'admin' };
   }
 

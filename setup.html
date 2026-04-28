@@ -171,14 +171,11 @@
   <script src="js/auth-manager.js"></script>
 
   <script>
-    // Setup page is intentionally accessible WITHOUT prior login.
-    // It is the mechanism by which the first user account is created.
-    // Check both localStorage AND the API — if accounts already exist anywhere,
-    // redirect to the login page instead of showing the creation form.
-    if (window.AuthManager) {
-      window.AuthManager.checkSetupComplete().then(function(done) {
-        if (done) window.location.href = 'auth.html';
-      });
+    // Setup page is used for both first-run account creation AND self-registration
+    // on additional devices. It is always accessible without a prior login.
+    // If the user is already authenticated, send them straight to the app.
+    if (window.AuthManager && window.AuthManager.isAuthenticated()) {
+      window.location.href = 'index.html';
     }
 
     function checkStrength() {
@@ -230,9 +227,9 @@
       msgEl.className   = 'message';
       msgEl.textContent = '';
 
-      // ── Try the server-side API first ──────────────────────────────────────
+      // ── Try the server-side API first (register = open self-registration) ───
       const { status, data } = await window.AuthManager.callUsersAPI('POST', {
-        action: 'create', username, password
+        action: 'register', username, password
       });
 
       if (status === 200 && data.success) {
