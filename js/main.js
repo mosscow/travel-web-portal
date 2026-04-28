@@ -662,17 +662,17 @@ function toggleBudgetAccordion() {
 }
 
 const BUDGET_STANDARD_CATEGORIES = [
-  { key: 'flights',       label: '✈️ Flights' },
-  { key: 'accommodation', label: '🏨 Accommodation' },
-  { key: 'transport',     label: '🚌 Transport' },
-  { key: 'food',          label: '🍽️ Food & Dining' },
-  { key: 'activities',    label: '🎭 Activities & Tours' },
-  { key: 'shopping',      label: '🛍️ Shopping' },
-  { key: 'insurance',     label: '🛡️ Travel Insurance' },
-  { key: 'visas',         label: '🪪 Visas & Entry Fees' },
-  { key: 'health',        label: '⚕️ Health & Medical' },
-  { key: 'comms',         label: '📱 Communications' },
-  { key: 'misc',          label: '📦 Misc / Other' },
+  { key: 'flights',       label: 'Flights' },
+  { key: 'accommodation', label: 'Accommodation' },
+  { key: 'transport',     label: 'Transport' },
+  { key: 'food',          label: 'Food &amp; Dining' },
+  { key: 'activities',    label: 'Activities &amp; Tours' },
+  { key: 'shopping',      label: 'Shopping' },
+  { key: 'insurance',     label: 'Travel Insurance' },
+  { key: 'visas',         label: 'Visas &amp; Entry Fees' },
+  { key: 'health',        label: 'Health &amp; Medical' },
+  { key: 'comms',         label: 'Communications' },
+  { key: 'misc',          label: 'Misc / Other' },
 ];
 
 function getBudgetCategories() {
@@ -696,6 +696,7 @@ function renderBudget() {
   renderBudgetCategories();
   renderBudgetItems();
   updateBudgetSummary();
+  syncTransportsToBudget(); // pull in any transport costs not yet reflected
 }
 
 function saveBudget() {
@@ -793,7 +794,12 @@ function renderBudgetItems() {
       </div>`;
     return;
   }
-  container.innerHTML = items.map((item, i) => buildBudgetItemCard(item, i)).join('');
+  try {
+    container.innerHTML = items.map((item, i) => buildBudgetItemCard(item, i)).join('');
+  } catch (e) {
+    console.error('renderBudgetItems error:', e);
+    container.innerHTML = `<div class="budget-items-empty"><div class="budget-empty-text">Error rendering items — check console.</div></div>`;
+  }
 }
 
 function buildBudgetItemCard(item, index) {
@@ -867,7 +873,7 @@ function addBudgetItem() {
     id: Date.now(),
     bookingDate: '',
     description: '',
-    category: BUDGET_STANDARD_CATEGORIES[0].key,
+    category: 'flights',
     refNum: '',
     startDate: '',
     endDate: '',
@@ -1971,6 +1977,7 @@ function addTransport() {
   renderTransportContent(segment);
   Storage.saveTripData(TRIP_DATA);
   showSavedIndicator('Transport added');
+  syncTransportsToBudget();
 }
 
 function removeTransport(idx) {
