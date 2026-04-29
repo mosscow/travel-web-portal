@@ -4,21 +4,14 @@
 //   URL:    https://your-app.vercel.app/api/check-alerts
 //   Method: POST
 //
-// Required env vars (same as search-flights.js):
-//   AMADEUS_API_KEY, AMADEUS_API_SECRET
+// Required env vars:
+//   KIWI_API_KEY        — from tequila.kiwi.com (free registration)
 //
-// Required env vars for Telegram notifications:
+// Required for Telegram notifications:
 //   TELEGRAM_BOT_TOKEN  — from @BotFather on Telegram
-//   TELEGRAM_CHAT_ID    — your personal chat ID (send /start to your bot, then check getUpdates)
-//
-// Optional:
-//   AMADEUS_ENV         — 'test' (default) | 'production'
+//   TELEGRAM_CHAT_ID    — your personal chat ID
 
-const AMADEUS_BASE =
-  process.env.AMADEUS_ENV === 'production'
-    ? 'https://api.amadeus.com'
-    : 'https://test.api.amadeus.com';
-
+const KIWI_BASE  = 'https://api.tequila.kiwi.com';
 const KV_URL     = process.env.KV_REST_API_URL;
 const KV_TOKEN   = process.env.KV_REST_API_TOKEN;
 const ALERTS_KEY = 'flight-price-alerts';
@@ -49,51 +42,52 @@ async function kvSet(key, value) {
   } catch {}
 }
 
-// ── Amadeus token (re-acquired each invocation — no cross-request cache here) ─
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
-async function getAmadeusToken() {
-  const apiKey    = process.env.AMADEUS_API_KEY;
-  const apiSecret = process.env.AMADEUS_API_SECRET;
-  if (!apiKey || !apiSecret) return null;
+/** YYYY-MM-DD → DD/MM/YYYY */
+function toKiwiDate(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ── Search cheapest price via Kiwi.com ────────────────────────────────────────
+
+const CABIN_TO_KIWI = {
+  ECONOMY: 'M', PREMIUM_ECONOMY: 'W', BUSINESS: 'C', FIRST: 'F'
+};
+
+async function getCheapestPrice(alert) {
+  const apiKey = process.env.KIWI_API_KEY;
+  if (!apiKey) return null;
+
+  const kiwiDepart = toKiwiDate(alert.departDate);
+  const kiwiReturn = alert.returnDate ? toKiwiDate(alert.returnDate) : null;
+  const kiwiCabin  = CABIN_TO_KIWI[(alert.cabinClass || 'ECONOMY').toUpperCase()] || 'M';
+
+  const params = new URLSearchParams({
+    fly_from:        alert.from,
+    fly_to:          alert.to,
+    date_from:       kiwiDepart,
+    date_to:         kiwiDepart,
+    adults:          String(alert.adults || 1),
+    selected_cabins: kiwiCabin,
+    curr:            alert.currency || 'AUD',
+    limit:           '3',
+    sort:            'price'
+  });
+  if (kiwiReturn) {
+    params.set('return_from', kiwiReturn);
+    params.set('return_to',   kiwiReturn);
+  }
 
   try {
-    const res = await fetch(`${AMADEUS_BASE}/v1/security/oauth2/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `grant_type=client_credentials&client_id=${encodeURIComponent(apiKey)}&client_secret=${encodeURIComponent(apiSecret)}`
+    const res = await fetch(`${KIWI_BASE}/v2/search?${params}`, {
+      headers: { apikey: apiKey }
     });
     if (!res.ok) return null;
     const data = await res.json();
-    return data.access_token || null;
-  } catch {
-    return null;
-  }
-}
-
-// ── Search for cheapest price for a given alert ───────────────────────────────
-
-async function getCheapestPrice(alert, token) {
-  const params = new URLSearchParams({
-    originLocationCode:      alert.from,
-    destinationLocationCode: alert.to,
-    departureDate:           alert.departDate,
-    adults:                  String(alert.adults || 1),
-    travelClass:             alert.cabinClass || 'ECONOMY',
-    max:                     '5',
-    currencyCode:            alert.currency || 'AUD'
-  });
-  if (alert.returnDate) params.set('returnDate', alert.returnDate);
-
-  try {
-    const res = await fetch(
-      `${AMADEUS_BASE}/v2/shopping/flight-offers?${params}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.data?.length) return null;
-    // Amadeus returns offers sorted by price — first is cheapest
-    return parseFloat(data.data[0].price.total);
+    return data.data?.[0]?.price ?? null;
   } catch {
     return null;
   }
@@ -129,16 +123,11 @@ export default async function handler(req, res) {
     return res.json({ checked: 0, triggered: 0, message: 'No alerts configured' });
   }
 
-  if (!process.env.AMADEUS_API_KEY) {
+  if (!process.env.KIWI_API_KEY) {
     return res.status(503).json({
-      error: 'Amadeus not configured — cannot check prices',
-      code: 'AMADEUS_NOT_CONFIGURED'
+      error: 'Kiwi.com API key not configured — cannot check prices',
+      code: 'KIWI_NOT_CONFIGURED'
     });
-  }
-
-  const token = await getAmadeusToken();
-  if (!token) {
-    return res.status(503).json({ error: 'Could not authenticate with Amadeus API' });
   }
 
   const telegramToken  = process.env.TELEGRAM_BOT_TOKEN;
@@ -149,7 +138,7 @@ export default async function handler(req, res) {
   const now     = new Date().toISOString();
 
   for (const alert of alerts) {
-    const price = await getCheapestPrice(alert, token);
+    const price = await getCheapestPrice(alert);
     checked++;
 
     alert.lastChecked = now;
@@ -164,21 +153,20 @@ export default async function handler(req, res) {
         const dateInfo = alert.returnDate
           ? `Depart ${alert.departDate} · Return ${alert.returnDate}`
           : `Depart ${alert.departDate}`;
-        const msg =
+
+        await sendTelegram(telegramToken, telegramChatId,
           `✈️ <b>Flight Price Alert!</b>\n\n` +
           `Route: <b>${route}</b>\n` +
           `${dateInfo}\n` +
           `${alert.adults} passenger${alert.adults > 1 ? 's' : ''} · ${alert.cabinClass}\n\n` +
           `💰 Current price: <b>${alert.currency} ${price.toLocaleString('en-AU')}</b>\n` +
           `🎯 Your threshold: ${alert.currency} ${alert.threshold.toLocaleString('en-AU')}\n\n` +
-          `<a href="https://www.google.com/flights">Search on Google Flights →</a>`;
-
-        await sendTelegram(telegramToken, telegramChatId, msg);
+          `<a href="https://www.google.com/flights">Search on Google Flights →</a>`
+        );
       }
     }
   }
 
-  // Persist updated alert states
   await kvSet(ALERTS_KEY, alerts);
 
   return res.json({ checked, triggered, timestamp: now });

@@ -1653,15 +1653,15 @@ async function searchFlights() {
 
     const data = await resp.json();
 
-    if (resp.status === 503 && data.code === 'AMADEUS_NOT_CONFIGURED') {
+    if (resp.status === 503 && data.code === 'KIWI_NOT_CONFIGURED') {
       resultsEl.innerHTML = `
         <div class="fs-not-configured">
           <div class="fs-not-configured-icon">✈️</div>
           <div class="fs-not-configured-title">In-App Flight Search Not Configured</div>
           <div class="fs-not-configured-desc">
-            Add <code>AMADEUS_API_KEY</code> and <code>AMADEUS_API_SECRET</code> to your Vercel
-            environment variables to enable in-app results.<br>
-            Register free at <a href="https://developers.amadeus.com/register" target="_blank" rel="noopener">developers.amadeus.com</a>
+            Add <code>KIWI_API_KEY</code> to your Vercel environment variables to enable in-app results
+            with real prices.<br>
+            Register free at <a href="https://tequila.kiwi.com/portal/login" target="_blank" rel="noopener">tequila.kiwi.com</a>
           </div>
           <button class="fs-btn-gf" onclick="openGoogleFlights()">Open Google Flights →</button>
         </div>`;
@@ -1702,7 +1702,7 @@ function renderFlightResults() {
   container.innerHTML = `
     <div class="fs-results-header">
       <span class="fs-results-count">${_flightSearchResults.length} flight${_flightSearchResults.length !== 1 ? 's' : ''} found</span>
-      <span class="fs-results-note">ℹ️ Amadeus test data — prices are indicative</span>
+      <span class="fs-results-note">ℹ️ Live prices via Kiwi.com</span>
       <a class="fs-btn-gf-sm" href="${buildGoogleFlightsUrl()}" target="_blank" rel="noopener">Real prices on Google Flights →</a>
     </div>
     ${_flightSearchResults.map((r, i) => buildFlightResultCard(r, i, cur)).join('')}
