@@ -1,20 +1,26 @@
 // api/check-alerts.js — Check flight price alerts and send Telegram notifications
 //
-// Call this endpoint from a cron job (e.g. cron-job.org) once or twice a day:
+// Trigger via cron job (cron-job.org) once or twice a day:
 //   URL:    https://your-app.vercel.app/api/check-alerts
 //   Method: POST
 //
 // Required env vars:
-//   KIWI_API_KEY        — from tequila.kiwi.com (free registration)
+//   SERPAPI_KEY         — from serpapi.com (free: 100 searches/month)
+//   KV_REST_API_URL     — Vercel KV
+//   KV_REST_API_TOKEN   — Vercel KV
 //
-// Required for Telegram notifications:
-//   TELEGRAM_BOT_TOKEN  — from @BotFather on Telegram
+// For Telegram notifications:
+//   TELEGRAM_BOT_TOKEN  — from @BotFather
 //   TELEGRAM_CHAT_ID    — your personal chat ID
 
-const KIWI_BASE  = 'https://api.tequila.kiwi.com';
-const KV_URL     = process.env.KV_REST_API_URL;
-const KV_TOKEN   = process.env.KV_REST_API_TOKEN;
-const ALERTS_KEY = 'flight-price-alerts';
+const SERPAPI_BASE = 'https://serpapi.com/search.json';
+const KV_URL       = process.env.KV_REST_API_URL;
+const KV_TOKEN     = process.env.KV_REST_API_TOKEN;
+const ALERTS_KEY   = 'flight-price-alerts';
+
+const CABIN_TO_GF = {
+  ECONOMY: '1', PREMIUM_ECONOMY: '2', BUSINESS: '3', FIRST: '4'
+};
 
 // ── KV helpers ────────────────────────────────────────────────────────────────
 
@@ -26,9 +32,7 @@ async function kvGet(key) {
     });
     const { result } = await res.json();
     return result ? JSON.parse(result) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function kvSet(key, value) {
@@ -42,58 +46,43 @@ async function kvSet(key, value) {
   } catch {}
 }
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-/** YYYY-MM-DD → DD/MM/YYYY */
-function toKiwiDate(dateStr) {
-  if (!dateStr) return null;
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-// ── Search cheapest price via Kiwi.com ────────────────────────────────────────
-
-const CABIN_TO_KIWI = {
-  ECONOMY: 'M', PREMIUM_ECONOMY: 'W', BUSINESS: 'C', FIRST: 'F'
-};
+// ── Price check via SerpAPI price_insights ────────────────────────────────────
+// Uses price_insights.lowest_price — a single number, no need to parse all flights.
 
 async function getCheapestPrice(alert) {
-  const apiKey = process.env.KIWI_API_KEY;
-  if (!apiKey) return null;
-
-  const kiwiDepart = toKiwiDate(alert.departDate);
-  const kiwiReturn = alert.returnDate ? toKiwiDate(alert.returnDate) : null;
-  const kiwiCabin  = CABIN_TO_KIWI[(alert.cabinClass || 'ECONOMY').toUpperCase()] || 'M';
+  if (!process.env.SERPAPI_KEY) return null;
 
   const params = new URLSearchParams({
-    fly_from:        alert.from,
-    fly_to:          alert.to,
-    date_from:       kiwiDepart,
-    date_to:         kiwiDepart,
-    adults:          String(alert.adults || 1),
-    selected_cabins: kiwiCabin,
-    curr:            alert.currency || 'AUD',
-    limit:           '3',
-    sort:            'price'
+    engine:        'google_flights',
+    departure_id:  alert.from,
+    arrival_id:    alert.to,
+    outbound_date: alert.departDate,
+    adults:        String(alert.adults || 1),
+    travel_class:  CABIN_TO_GF[(alert.cabinClass || 'ECONOMY').toUpperCase()] || '1',
+    currency:      alert.currency || 'AUD',
+    hl:            'en',
+    api_key:       process.env.SERPAPI_KEY
   });
-  if (kiwiReturn) {
-    params.set('return_from', kiwiReturn);
-    params.set('return_to',   kiwiReturn);
-  }
+  if (alert.returnDate) params.set('return_date', alert.returnDate);
 
   try {
-    const res = await fetch(`${KIWI_BASE}/v2/search?${params}`, {
-      headers: { apikey: apiKey }
-    });
+    const res  = await fetch(`${SERPAPI_BASE}?${params}`);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.data?.[0]?.price ?? null;
-  } catch {
-    return null;
-  }
+    if (data.error) return null;
+
+    // price_insights.lowest_price is the most reliable single number
+    const lowest = data.price_insights?.lowest_price;
+    if (lowest) return lowest;
+
+    // Fallback: take cheapest from best_flights + other_flights
+    const all = [...(data.best_flights || []), ...(data.other_flights || [])];
+    const prices = all.map(f => f.price).filter(p => p != null);
+    return prices.length ? Math.min(...prices) : null;
+  } catch { return null; }
 }
 
-// ── Telegram notification ─────────────────────────────────────────────────────
+// ── Telegram ──────────────────────────────────────────────────────────────────
 
 async function sendTelegram(botToken, chatId, text) {
   try {
@@ -113,34 +102,25 @@ export default async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
   if (!KV_URL || !KV_TOKEN) {
     return res.status(503).json({ error: 'KV not configured', code: 'KV_NOT_CONFIGURED' });
   }
 
   const alerts = await kvGet(ALERTS_KEY) || [];
-  if (alerts.length === 0) {
-    return res.json({ checked: 0, triggered: 0, message: 'No alerts configured' });
-  }
+  if (!alerts.length) return res.json({ checked: 0, triggered: 0, message: 'No alerts' });
 
-  if (!process.env.KIWI_API_KEY) {
-    return res.status(503).json({
-      error: 'Kiwi.com API key not configured — cannot check prices',
-      code: 'KIWI_NOT_CONFIGURED'
-    });
+  if (!process.env.SERPAPI_KEY) {
+    return res.status(503).json({ error: 'SERPAPI_KEY not configured', code: 'SERPAPI_NOT_CONFIGURED' });
   }
 
   const telegramToken  = process.env.TELEGRAM_BOT_TOKEN;
   const telegramChatId = process.env.TELEGRAM_CHAT_ID;
-
-  let checked   = 0;
-  let triggered = 0;
-  const now     = new Date().toISOString();
+  const now            = new Date().toISOString();
+  let checked = 0, triggered = 0;
 
   for (const alert of alerts) {
     const price = await getCheapestPrice(alert);
     checked++;
-
     alert.lastChecked = now;
     alert.lastPrice   = price;
 
@@ -149,25 +129,23 @@ export default async function handler(req, res) {
       triggered++;
 
       if (telegramToken && telegramChatId) {
-        const route    = `${alert.from} → ${alert.to}`;
         const dateInfo = alert.returnDate
           ? `Depart ${alert.departDate} · Return ${alert.returnDate}`
           : `Depart ${alert.departDate}`;
 
         await sendTelegram(telegramToken, telegramChatId,
           `✈️ <b>Flight Price Alert!</b>\n\n` +
-          `Route: <b>${route}</b>\n` +
+          `Route: <b>${alert.from} → ${alert.to}</b>\n` +
           `${dateInfo}\n` +
-          `${alert.adults} passenger${alert.adults > 1 ? 's' : ''} · ${alert.cabinClass}\n\n` +
+          `${alert.adults} pax · ${alert.cabinClass}\n\n` +
           `💰 Current price: <b>${alert.currency} ${price.toLocaleString('en-AU')}</b>\n` +
           `🎯 Your threshold: ${alert.currency} ${alert.threshold.toLocaleString('en-AU')}\n\n` +
-          `<a href="https://www.google.com/flights">Search on Google Flights →</a>`
+          `<a href="https://www.google.com/flights">Book on Google Flights →</a>`
         );
       }
     }
   }
 
   await kvSet(ALERTS_KEY, alerts);
-
   return res.json({ checked, triggered, timestamp: now });
 }

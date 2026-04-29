@@ -1,104 +1,77 @@
-// api/search-flights.js — Kiwi.com Tequila flight search proxy
-// Required env var: KIWI_API_KEY
+// api/search-flights.js — Google Flights search via SerpAPI
+// Required env var: SERPAPI_KEY
 //
-// Register free at: https://tequila.kiwi.com/portal/login
-// Returns real live flight prices (not synthetic test data).
+// Register free at: https://serpapi.com (100 searches/month free, no credit card)
+// Returns real live Google Flights prices.
 
-const KIWI_BASE = 'https://api.tequila.kiwi.com';
+const SERPAPI_BASE = 'https://serpapi.com/search.json';
 
-// Amadeus cabin codes → Kiwi cabin codes
-const CABIN_TO_KIWI = {
-  'ECONOMY':         'M',
-  'PREMIUM_ECONOMY': 'W',
-  'BUSINESS':        'C',
-  'FIRST':           'F'
-};
-
-// Common airline IATA code → name (best-effort; falls back to code)
-const AIRLINE_NAMES = {
-  QF:'Qantas', EK:'Emirates', SQ:'Singapore Airlines', CX:'Cathay Pacific',
-  TG:'Thai Airways', MH:'Malaysia Airlines', GA:'Garuda Indonesia',
-  AI:'Air India', BA:'British Airways', LH:'Lufthansa', AF:'Air France',
-  KL:'KLM', IB:'Iberia', AY:'Finnair', SK:'SAS', OS:'Austrian Airlines',
-  LX:'Swiss', TP:'TAP Air Portugal', AZ:'ITA Airways', FR:'Ryanair',
-  U2:'easyJet', W6:'Wizz Air', VY:'Vueling', D8:'Norwegian',
-  UA:'United Airlines', AA:'American Airlines', DL:'Delta Air Lines',
-  WN:'Southwest', AS:'Alaska Airlines', B6:'JetBlue',
-  AC:'Air Canada', WS:'WestJet',
-  NH:'ANA', JL:'Japan Airlines', MU:'China Eastern', CZ:'China Southern',
-  CA:'Air China', KE:'Korean Air', OZ:'Asiana Airlines',
-  TK:'Turkish Airlines', MS:'EgyptAir', ET:'Ethiopian Airlines',
-  EY:'Etihad Airways', GF:'Gulf Air', QR:'Qatar Airways', WY:'Oman Air',
-  VA:'Virgin Australia', JQ:'Jetstar', FD:'Thai AirAsia', AK:'AirAsia',
-  NZ:'Air New Zealand', FJ:'Fiji Airways'
+// Cabin class numbers used by Google Flights / SerpAPI
+const CABIN_TO_GF = {
+  'ECONOMY':         '1',
+  'PREMIUM_ECONOMY': '2',
+  'BUSINESS':        '3',
+  'FIRST':           '4'
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** YYYY-MM-DD → DD/MM/YYYY (Kiwi date format) */
-function toKiwiDate(dateStr) {
-  if (!dateStr) return null;
-  const [y, m, d] = dateStr.split('-');
-  return `${d}/${m}/${y}`;
-}
-
-/** Duration in seconds → '14h 35m' */
-function fmtDuration(secs) {
-  if (!secs) return '';
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
+/** Duration in minutes → '14h 35m' */
+function fmtMins(mins) {
+  if (!mins) return '';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-/** Derive duration from ISO date strings when Kiwi doesn't supply seconds */
-function legDuration(departAt, arriveAt) {
-  try {
-    return fmtDuration((new Date(arriveAt) - new Date(departAt)) / 1000);
-  } catch {
-    return '';
-  }
+/**
+ * SerpAPI returns time as "2026-06-01 12:00" — convert to ISO-style
+ * so our existing date arithmetic in the UI works correctly.
+ */
+function toIso(t) {
+  return t ? t.replace(' ', 'T') + ':00' : '';
 }
 
-function buildLeg(segs) {
-  if (!segs.length) return null;
+/** Build a leg object from a flat array of SerpAPI segment objects */
+function buildLeg(segs, totalDuration) {
+  if (!segs || !segs.length) return null;
   const first = segs[0];
   const last  = segs[segs.length - 1];
+
   return {
-    from:      first.flyFrom,
-    to:        last.flyTo,
-    departAt:  first.local_departure,
-    arriveAt:  last.local_arrival,
-    duration:  legDuration(first.local_departure, last.local_arrival),
+    from:      first.departure_airport?.id   || '?',
+    to:        last.arrival_airport?.id      || '?',
+    departAt:  toIso(first.departure_airport?.time),
+    arriveAt:  toIso(last.arrival_airport?.time),
+    duration:  fmtMins(totalDuration || segs.reduce((s, f) => s + (f.duration || 0), 0)),
     stops:     segs.length - 1,
-    stopCodes: segs.slice(0, -1).map(s => s.flyTo),
+    stopCodes: segs.slice(0, -1).map(s => s.arrival_airport?.id).filter(Boolean),
     segments:  segs.map(s => ({
-      from:      s.flyFrom,
-      to:        s.flyTo,
-      departAt:  s.local_departure,
-      arriveAt:  s.local_arrival,
-      airline:   AIRLINE_NAMES[s.airline] || s.airline,
-      flightNum: s.airline + s.flight_no,
-      duration:  legDuration(s.local_departure, s.local_arrival)
+      from:      s.departure_airport?.id,
+      to:        s.arrival_airport?.id,
+      departAt:  toIso(s.departure_airport?.time),
+      arriveAt:  toIso(s.arrival_airport?.time),
+      airline:   s.airline,
+      flightNum: s.flight_number,
+      duration:  fmtMins(s.duration)
     }))
   };
 }
 
-function normalizeOffer(offer, currency, adults, cabinClass) {
-  const route   = offer.route || [];
-  // Kiwi marks each segment: return=0 outbound, return=1 inbound
-  const outSegs = route.filter(s => s.return === 0);
-  const inSegs  = route.filter(s => s.return === 1);
-
-  const primaryCode = (offer.airlines || [])[0] || outSegs[0]?.airline || '?';
+function normalizeOffer(f, currency, adults, cabinClass) {
+  const segs       = f.flights || [];
+  const firstSeg   = segs[0] || {};
+  const airlineCode = (firstSeg.flight_number || '').split(' ')[0] || '??';
 
   return {
-    id:          offer.id,
-    price:       offer.price,
+    id:          f.booking_token || (`serp-${Date.now()}-${Math.random()}`),
+    price:       f.price,
     currency,
-    airline:     AIRLINE_NAMES[primaryCode] || primaryCode,
-    airlineCode: primaryCode,
-    outbound:    buildLeg(outSegs.length ? outSegs : route),
-    inbound:     inSegs.length ? buildLeg(inSegs) : null,
+    airline:     firstSeg.airline || airlineCode,
+    airlineCode,
+    airlineLogo: firstSeg.airline_logo || null,
+    outbound:    buildLeg(segs, f.total_duration),
+    inbound:     null,   // SerpAPI one-way; round-trip handled per-leg by Google
     cabinClass,
     adults
   };
@@ -113,10 +86,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!process.env.KIWI_API_KEY) {
+  if (!process.env.SERPAPI_KEY) {
     return res.status(503).json({
-      error: 'Flight search requires a Kiwi.com API key. Add KIWI_API_KEY to your Vercel environment variables. Register free at tequila.kiwi.com.',
-      code: 'KIWI_NOT_CONFIGURED'
+      error: 'Flight search requires a SerpAPI key. Add SERPAPI_KEY to your Vercel environment variables. Register free (100 searches/month) at serpapi.com.',
+      code: 'SERPAPI_NOT_CONFIGURED'
     });
   }
 
@@ -130,46 +103,47 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'from, to, and departDate are required' });
   }
 
-  const kiwiDepart = toKiwiDate(departDate);
-  const kiwiReturn = returnDate ? toKiwiDate(returnDate) : null;
-  const kiwiCabin  = CABIN_TO_KIWI[(cabinClass || 'ECONOMY').toUpperCase()] || 'M';
-  const cur        = (currencyCode || 'AUD').toUpperCase();
+  const cur = (currencyCode || 'AUD').toUpperCase();
 
   const params = new URLSearchParams({
-    fly_from:        from.toUpperCase(),
-    fly_to:          to.toUpperCase(),
-    date_from:       kiwiDepart,
-    date_to:         kiwiDepart,       // fixed departure date
-    adults:          String(parseInt(adults) || 1),
-    selected_cabins: kiwiCabin,
-    curr:            cur,
-    limit:           String(Math.min(parseInt(max) || 10, 20)),
-    sort:            'price',
-    max_stopovers:   '3'
+    engine:       'google_flights',
+    departure_id: from.toUpperCase(),
+    arrival_id:   to.toUpperCase(),
+    outbound_date: departDate,
+    adults:       String(parseInt(adults) || 1),
+    travel_class: CABIN_TO_GF[(cabinClass || 'ECONOMY').toUpperCase()] || '1',
+    currency:     cur,
+    hl:           'en',
+    api_key:      process.env.SERPAPI_KEY
   });
-  if (kiwiReturn) {
-    params.set('return_from', kiwiReturn);
-    params.set('return_to',   kiwiReturn);
-  }
+  if (returnDate) params.set('return_date', returnDate);
 
   try {
-    const resp = await fetch(`${KIWI_BASE}/v2/search?${params}`, {
-      headers: { apikey: process.env.KIWI_API_KEY }
-    });
+    const resp = await fetch(`${SERPAPI_BASE}?${params}`);
 
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({}));
       return res.status(resp.status).json({
-        error: body.message || body.error || `Kiwi API error ${resp.status}`
+        error: body.error || `SerpAPI error ${resp.status}`
       });
     }
 
-    const data    = await resp.json();
-    const results = (data.data || []).map(o =>
-      normalizeOffer(o, cur, parseInt(adults) || 1, cabinClass)
+    const data = await resp.json();
+
+    if (data.error) {
+      return res.status(400).json({ error: data.error });
+    }
+
+    // Merge best_flights (featured) + other_flights, cap at max
+    const raw     = [...(data.best_flights || []), ...(data.other_flights || [])];
+    const results = raw.slice(0, parseInt(max) || 10).map(f =>
+      normalizeOffer(f, cur, parseInt(adults) || 1, cabinClass)
     );
 
-    return res.json({ results, count: results.length });
+    // Include price insights for context (lowest / typical range)
+    const insights = data.price_insights || null;
+
+    return res.json({ results, count: results.length, insights });
   } catch (err) {
     return res.status(500).json({ error: 'Flight search error: ' + err.message });
   }

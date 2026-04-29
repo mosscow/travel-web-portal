@@ -106,22 +106,22 @@ function initSettings() {
         </div>
       </div>
 
-      <!-- KIWI FLIGHT SEARCH — admin only -->
+      <!-- SERPAPI FLIGHT SEARCH — admin only -->
       <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
         <div class="settings-card-header">
           <span class="settings-card-icon">✈️</span>
           <div>
-            <div class="settings-card-title">Flight Search (Kiwi.com)</div>
-            <div class="settings-card-subtitle">In-app flight search with real prices and price alerts</div>
+            <div class="settings-card-title">Flight Search (Google Flights via SerpAPI)</div>
+            <div class="settings-card-subtitle">In-app search powered by real Google Flights data · 100 free searches/month</div>
           </div>
         </div>
         <div class="settings-info-box">
           <strong>Setup (free — no credit card required):</strong><br>
-          1. Register at <a href="https://tequila.kiwi.com/portal/login" target="_blank" rel="noopener">tequila.kiwi.com</a><br>
-          2. Create an API key from your dashboard<br>
+          1. Register at <a href="https://serpapi.com/users/sign_up" target="_blank" rel="noopener">serpapi.com</a> — instant access, 100 searches/month free<br>
+          2. Copy your <strong>API Key</strong> from the dashboard<br>
           3. In your Vercel project → Settings → Environment Variables, add:<br>
-          &nbsp;&nbsp;• <code>KIWI_API_KEY</code> — your Tequila API key<br>
-          4. Redeploy. Real live prices, no synthetic data.
+          &nbsp;&nbsp;• <code>SERPAPI_KEY</code> — your SerpAPI key<br>
+          4. Redeploy. Results come directly from Google Flights.
         </div>
         <div class="settings-actions">
           <button class="settings-btn settings-btn-success" onclick="testAmadeusConnection()">Test Connection</button>
@@ -427,13 +427,13 @@ async function sendTelegramNotification(text) {
 }
 
 /**
- * Test Kiwi.com flight search connection
+ * Test SerpAPI flight search connection
  */
 async function testAmadeusConnection() {
   const msgEl = document.getElementById('amadeusMessage');
-  msgEl.innerHTML = showMessage('Testing Kiwi.com connection…', 'info');
+  msgEl.innerHTML = showMessage('Testing SerpAPI connection…', 'info');
 
-  // Use a date 6 months out so there are always results
+  // Use a date ~6 months out so Google Flights has results to return
   const testDate = new Date();
   testDate.setMonth(testDate.getMonth() + 6);
   const dateStr = testDate.toISOString().substring(0, 10);
@@ -442,14 +442,17 @@ async function testAmadeusConnection() {
     const resp = await fetch('/api/search-flights', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'SYD', to: 'LHR', departDate: dateStr, adults: 1, max: 1 })
+      body: JSON.stringify({ from: 'SYD', to: 'LHR', departDate: dateStr, adults: 1, max: 3 })
     });
     const data = await resp.json();
 
-    if (resp.status === 503 && data.code === 'KIWI_NOT_CONFIGURED') {
-      msgEl.innerHTML = showMessage('Not configured — add KIWI_API_KEY to Vercel env vars, then redeploy.', 'error');
+    if (resp.status === 503 && data.code === 'SERPAPI_NOT_CONFIGURED') {
+      msgEl.innerHTML = showMessage('Not configured — add SERPAPI_KEY to Vercel env vars, then redeploy.', 'error');
     } else if (resp.ok) {
-      msgEl.innerHTML = showMessage(`✅ Connected! Found ${data.count} result${data.count !== 1 ? 's' : ''} for SYD→LHR.`, 'success');
+      const priceNote = data.insights?.lowest_price
+        ? ` · Lowest: ${data.insights.lowest_price.toLocaleString()}`
+        : '';
+      msgEl.innerHTML = showMessage(`✅ Connected! Found ${data.count} result${data.count !== 1 ? 's' : ''} for SYD→LHR${priceNote}.`, 'success');
     } else {
       msgEl.innerHTML = showMessage('❌ ' + (data.error || 'Unknown error'), 'error');
     }
