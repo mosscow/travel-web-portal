@@ -2926,3 +2926,518 @@ code {
   background: var(--color-background-primary);
   color: var(--color-text-primary);
 }
+
+/* ── In-App Flight Search Results ───────────────────────────────────────────── */
+
+.fs-results-container {
+  margin: 0 1.5rem 1rem;
+}
+
+.fs-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 1.5rem;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.fs-loading-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(0,0,0,0.15);
+  border-top-color: #1976D2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.fs-error {
+  padding: 1rem 1.5rem;
+  color: #c62828;
+  font-size: 13px;
+  background: #ffcdd2;
+  border-radius: 6px;
+}
+
+.fs-no-results {
+  padding: 2rem;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.fs-no-results-icon { font-size: 32px; margin-bottom: 8px; }
+
+.fs-not-configured {
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--color-background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-secondary);
+}
+
+.fs-not-configured-icon { font-size: 36px; margin-bottom: 8px; }
+.fs-not-configured-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+.fs-not-configured-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto 1rem;
+}
+.fs-not-configured-desc a { color: #1976D2; }
+.fs-not-configured-desc code {
+  background: rgba(0,0,0,0.07);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.fs-results-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 10px;
+  flex-wrap: wrap;
+}
+
+.fs-results-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.fs-results-note {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  flex: 1;
+}
+
+.fs-btn-gf {
+  display: inline-block;
+  padding: 7px 14px;
+  background: #1976D2;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.fs-btn-gf:hover { background: #1565c0; color: #fff; }
+
+.fs-btn-gf-sm {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid #1976D2;
+  color: #1976D2;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.fs-btn-gf-sm:hover { background: #e3f2fd; }
+
+/* Result card */
+.fs-result-card {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+.fs-result-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.09); }
+
+.fs-card-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  flex-wrap: wrap;
+}
+
+.fs-airline-block {
+  min-width: 70px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.fs-airline-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #1a237e;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+.fs-airline-name {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+.fs-legs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.fs-leg { display: flex; align-items: center; gap: 8px; }
+.fs-leg-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 26px;
+}
+
+.fs-leg-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.fs-endpoint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+}
+.fs-time {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+.fs-time sup { font-size: 9px; }
+.fs-iata {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.fs-route-mid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.fs-duration {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.fs-route-line {
+  width: 100%;
+  height: 1px;
+  background: var(--color-border-secondary);
+  position: relative;
+}
+.fs-route-line::before,
+.fs-route-line::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--color-border-secondary);
+}
+.fs-route-line::before { left: 0; }
+.fs-route-line::after  { right: 0; }
+
+.fs-stops-label {
+  font-size: 9px;
+  color: var(--color-text-tertiary);
+}
+
+/* Price block */
+.fs-price-block {
+  text-align: right;
+  min-width: 90px;
+  flex-shrink: 0;
+}
+.fs-price-main {
+  font-size: 17px;
+  font-weight: 800;
+  color: #1976D2;
+  line-height: 1;
+}
+.fs-price-sub {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+.fs-cabin-tag {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 1px 6px;
+  background: rgba(25,118,210,0.1);
+  color: #1976D2;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Card action buttons */
+.fs-card-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.fs-btn-alert {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.fs-btn-alert:hover,
+.fs-btn-alert--active {
+  background: #fff3e0;
+  border-color: #ff9800;
+  color: #e65100;
+}
+
+.fs-btn-book {
+  padding: 6px 10px;
+  background: #1976D2;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.fs-btn-book:hover { background: #1565c0; color: #fff; }
+
+/* Alert creation form (inline, below card) */
+.fs-alert-form {
+  border-top: 1px solid var(--color-border-secondary);
+  padding: 10px 14px;
+  background: #fff8e1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fs-af-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fs-af-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fs-af-cur {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.fs-af-input {
+  width: 100px;
+  padding: 5px 8px;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #fff;
+  color: var(--color-text-primary);
+}
+.fs-af-input:focus { outline: none; border-color: #ff9800; }
+
+.fs-af-create-btn {
+  padding: 5px 14px;
+  background: #ff9800;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fs-af-create-btn:hover { background: #f57c00; }
+
+.fs-af-msg {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* ── Price Alerts Section ────────────────────────────────────────────────────── */
+
+.fs-alerts-section {
+  margin: 0 1.5rem 1.5rem;
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.fs-alerts-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: #fff;
+}
+
+.fs-alerts-title {
+  font-size: 13px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.fs-alerts-count {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.fs-btn-check-now {
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fs-btn-check-now:hover { background: rgba(255,255,255,0.35); }
+.fs-btn-check-now:disabled { opacity: 0.5; cursor: default; }
+
+.fs-alerts-list {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fs-alert-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 5px;
+  flex-wrap: wrap;
+}
+
+.fs-ai-route {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+.fs-ai-detail {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fs-ai-threshold {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ff9800;
+  white-space: nowrap;
+}
+.fs-ai-status {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.fs-ai-status--hit {
+  color: #2e7d32;
+  font-weight: 700;
+}
+.fs-ai-delete {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.fs-ai-delete:hover { color: #c62828; }
+
+.fs-alerts-cron {
+  padding: 8px 14px;
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  border-top: 1px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+  line-height: 1.6;
+}
+.fs-alerts-cron a { color: #1976D2; }
+.fs-alerts-cron code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+/* ── Settings: Amadeus info box ─────────────────────────────────────────────── */
+
+.settings-info-box {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  background: #e8f5e9;
+  border-left: 3px solid #43a047;
+  border-radius: 0 5px 5px 0;
+  font-size: 12px;
+  color: #1b5e20;
+  line-height: 1.7;
+}
+.settings-info-box strong { font-weight: 700; }
+.settings-info-box a { color: #1976D2; font-weight: 600; }
+.settings-info-box code {
+  background: rgba(0,0,0,0.07);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}

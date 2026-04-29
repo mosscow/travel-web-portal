@@ -106,13 +106,37 @@ function initSettings() {
         </div>
       </div>
 
+      <!-- AMADEUS FLIGHT SEARCH — admin only -->
+      <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
+        <div class="settings-card-header">
+          <span class="settings-card-icon">✈️</span>
+          <div>
+            <div class="settings-card-title">Amadeus Flight Search</div>
+            <div class="settings-card-subtitle">In-app flight search with price alerts (free tier)</div>
+          </div>
+        </div>
+        <div class="settings-info-box">
+          <strong>Setup (free — no credit card required):</strong><br>
+          1. Register at <a href="https://developers.amadeus.com/register" target="_blank" rel="noopener">developers.amadeus.com</a><br>
+          2. Create a new app → copy the <strong>API Key</strong> and <strong>API Secret</strong><br>
+          3. In your Vercel project → Settings → Environment Variables, add:<br>
+          &nbsp;&nbsp;• <code>AMADEUS_API_KEY</code><br>
+          &nbsp;&nbsp;• <code>AMADEUS_API_SECRET</code><br>
+          4. Redeploy. The test environment returns realistic synthetic data.
+        </div>
+        <div class="settings-actions">
+          <button class="settings-btn settings-btn-success" onclick="testAmadeusConnection()">Test Connection</button>
+          <div id="amadeusMessage" class="settings-msg-wrap"></div>
+        </div>
+      </div>
+
       <!-- TELEGRAM — admin only -->
       <div class="settings-card" ${isAdmin ? '' : 'style="display:none;"'}>
         <div class="settings-card-header">
           <span class="settings-card-icon">✈️</span>
           <div>
             <div class="settings-card-title">Telegram Notifications</div>
-            <div class="settings-card-subtitle">Get travel alerts and reminders via Telegram bot</div>
+            <div class="settings-card-subtitle">Get travel alerts and reminders via Telegram bot. For automatic price alerts, also add <code>TELEGRAM_BOT_TOKEN</code> and <code>TELEGRAM_CHAT_ID</code> as Vercel env vars.</div>
           </div>
         </div>
         <div class="settings-fields-grid">
@@ -400,6 +424,33 @@ async function sendTelegramNotification(text) {
     return data.ok;
   } catch (e) {
     return false;
+  }
+}
+
+/**
+ * Test Amadeus API connection by calling /api/search-flights
+ */
+async function testAmadeusConnection() {
+  const msgEl = document.getElementById('amadeusMessage');
+  msgEl.innerHTML = showMessage('Testing Amadeus connection…', 'info');
+
+  try {
+    const resp = await fetch('/api/search-flights', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'SYD', to: 'LHR', departDate: '2025-12-01', adults: 1, max: 1 })
+    });
+    const data = await resp.json();
+
+    if (resp.status === 503 && data.code === 'AMADEUS_NOT_CONFIGURED') {
+      msgEl.innerHTML = showMessage('Not configured — add AMADEUS_API_KEY and AMADEUS_API_SECRET to Vercel env vars, then redeploy.', 'error');
+    } else if (resp.ok) {
+      msgEl.innerHTML = showMessage(`✅ Connected! Found ${data.count} test result${data.count !== 1 ? 's' : ''} for SYD→LHR.`, 'success');
+    } else {
+      msgEl.innerHTML = showMessage('❌ ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    msgEl.innerHTML = showMessage('Connection error: ' + err.message, 'error');
   }
 }
 

@@ -230,18 +230,18 @@ function initApp() {
       <div id="flightsSubView" style="display:none;">
         <div class="flights-page">
 
-          <!-- ── Google Flights Search Panel ── -->
+          <!-- ── Flight Search Panel ── -->
           <div class="gf-panel">
-            <div class="gf-panel-title">🔍 Search Google Flights</div>
+            <div class="gf-panel-title">🔍 Search Flights</div>
             <div class="gf-fields-row">
               <div class="gf-field gf-field-airport">
                 <label class="gf-label">From</label>
-                <input type="text" id="gfFrom" class="gf-input" placeholder="SYD or Sydney">
+                <input type="text" id="gfFrom" class="gf-input" placeholder="SYD">
               </div>
               <button class="gf-swap-btn" onclick="swapFlightEndpoints()" title="Swap">⇌</button>
               <div class="gf-field gf-field-airport">
                 <label class="gf-label">To</label>
-                <input type="text" id="gfTo" class="gf-input" placeholder="FCO or Rome">
+                <input type="text" id="gfTo" class="gf-input" placeholder="FCO">
               </div>
               <div class="gf-field gf-field-date">
                 <label class="gf-label">Depart</label>
@@ -258,15 +258,21 @@ function initApp() {
               <div class="gf-field gf-field-class">
                 <label class="gf-label">Class</label>
                 <select id="gfClass" class="gf-input gf-select">
-                  <option value="f">Economy</option>
-                  <option value="w">Premium Economy</option>
-                  <option value="j">Business</option>
-                  <option value="c">First</option>
+                  <option value="ECONOMY">Economy</option>
+                  <option value="PREMIUM_ECONOMY">Premium Economy</option>
+                  <option value="BUSINESS">Business</option>
+                  <option value="FIRST">First</option>
                 </select>
               </div>
-              <button class="gf-search-btn" onclick="openGoogleFlights()">Search Google Flights ✈️</button>
+              <button class="gf-search-btn" id="gfSearchBtn" onclick="searchFlights()">Search ✈️</button>
             </div>
           </div>
+
+          <!-- ── In-App Search Results ── -->
+          <div id="fsResults" class="fs-results-container"></div>
+
+          <!-- ── Price Alerts ── -->
+          <div id="fsAlerts" class="fs-alerts-section" style="display:none;"></div>
 
           <div class="flights-page-header">
             <div>
@@ -1584,35 +1590,344 @@ function swapFlightEndpoints() {
   toEl.value   = tmp;
 }
 
-function openGoogleFlights() {
-  const from   = (document.getElementById('gfFrom')?.value  || '').trim();
-  const to     = (document.getElementById('gfTo')?.value    || '').trim();
+// ─── In-App Flight Search ────────────────────────────────────────────────────
+
+// In-memory state for search results and price alerts
+let _flightSearchResults = [];
+let _flightAlerts        = [];
+
+function buildGoogleFlightsUrl() {
+  const from   = (document.getElementById('gfFrom')?.value   || '').trim();
+  const to     = (document.getElementById('gfTo')?.value     || '').trim();
   const depart = (document.getElementById('gfDepart')?.value || '').trim();
   const ret    = (document.getElementById('gfReturn')?.value || '').trim();
-  const pax    = parseInt(document.getElementById('gfPax')?.value  || '1') || 1;
-  const cls    = document.getElementById('gfClass')?.value  || 'f';
+  const pax    = parseInt(document.getElementById('gfPax')?.value || '1') || 1;
+  // Map Amadeus cabin class back to Google Flights code
+  const clsMap = { 'ECONOMY': 'f', 'PREMIUM_ECONOMY': 'w', 'BUSINESS': 'j', 'FIRST': 'c' };
+  const cls    = clsMap[document.getElementById('gfClass')?.value] || 'f';
   const cur    = (TRIP_DATA.budget?.currency || 'AUD').toUpperCase();
 
+  let flt = `${encodeURIComponent(from)}.${encodeURIComponent(to)}`;
+  if (depart) flt += `.${depart}`;
+  if (ret) flt += `*${encodeURIComponent(to)}.${encodeURIComponent(from)}.${ret}`;
+  return `https://www.google.com/flights#flt=${flt};c:${cur};e:${pax};sd:1;t:${cls}`;
+}
+
+// Keep backward-compat: used by any remaining references
+function openGoogleFlights() { window.open(buildGoogleFlightsUrl(), '_blank'); }
+
+async function searchFlights() {
+  const from   = (document.getElementById('gfFrom')?.value   || '').trim().toUpperCase();
+  const to     = (document.getElementById('gfTo')?.value     || '').trim().toUpperCase();
+  const depart = (document.getElementById('gfDepart')?.value || '').trim();
+  const ret    = (document.getElementById('gfReturn')?.value || '').trim();
+  const pax    = parseInt(document.getElementById('gfPax')?.value || '1') || 1;
+  const cls    = document.getElementById('gfClass')?.value || 'ECONOMY';
+
   if (!from || !to) {
-    alert('Please enter both a From and To airport or city.');
+    alert('Enter origin and destination airport codes (e.g. SYD, FCO).');
     return;
   }
 
-  // Build segment strings: FROM.TO.DATE  (* = onward leg)
-  let flt = `${encodeURIComponent(from)}.${encodeURIComponent(to)}`;
-  if (depart) flt += `.${depart}`;
-  if (ret) {
-    flt += `*${encodeURIComponent(to)}.${encodeURIComponent(from)}.${ret}`;
+  const resultsEl = document.getElementById('fsResults');
+  if (!resultsEl) return;
+
+  const btn = document.getElementById('gfSearchBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Searching…'; }
+  resultsEl.innerHTML = '<div class="fs-loading"><div class="fs-loading-spinner"></div>Searching flights…</div>';
+
+  try {
+    const resp = await fetch('/api/search-flights', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from, to,
+        departDate:  depart || undefined,
+        returnDate:  ret    || undefined,
+        adults:      pax,
+        cabinClass:  cls,
+        currencyCode: (TRIP_DATA.budget?.currency || 'AUD').toUpperCase(),
+        max: 10
+      })
+    });
+
+    const data = await resp.json();
+
+    if (resp.status === 503 && data.code === 'AMADEUS_NOT_CONFIGURED') {
+      resultsEl.innerHTML = `
+        <div class="fs-not-configured">
+          <div class="fs-not-configured-icon">✈️</div>
+          <div class="fs-not-configured-title">In-App Flight Search Not Configured</div>
+          <div class="fs-not-configured-desc">
+            Add <code>AMADEUS_API_KEY</code> and <code>AMADEUS_API_SECRET</code> to your Vercel
+            environment variables to enable in-app results.<br>
+            Register free at <a href="https://developers.amadeus.com/register" target="_blank" rel="noopener">developers.amadeus.com</a>
+          </div>
+          <button class="fs-btn-gf" onclick="openGoogleFlights()">Open Google Flights →</button>
+        </div>`;
+      return;
+    }
+
+    if (!resp.ok) {
+      resultsEl.innerHTML = `<div class="fs-error">❌ Search failed: ${data.error || 'Unknown error'}</div>`;
+      return;
+    }
+
+    _flightSearchResults = data.results || [];
+    renderFlightResults();
+    loadFlightAlerts();
+
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="fs-error">❌ ${err.message}</div>`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Search ✈️'; }
+  }
+}
+
+function renderFlightResults() {
+  const container = document.getElementById('fsResults');
+  if (!container) return;
+  const cur = (TRIP_DATA.budget?.currency || 'AUD');
+
+  if (_flightSearchResults.length === 0) {
+    container.innerHTML = `
+      <div class="fs-no-results">
+        <div class="fs-no-results-icon">🔍</div>
+        <div>No flights found for this route and date combination.</div>
+        <button class="fs-btn-gf" onclick="openGoogleFlights()">Try Google Flights →</button>
+      </div>`;
+    return;
   }
 
-  const url = `https://www.google.com/flights#flt=${flt};c:${cur};e:${pax};sd:1;t:${cls}`;
-  window.open(url, '_blank');
+  container.innerHTML = `
+    <div class="fs-results-header">
+      <span class="fs-results-count">${_flightSearchResults.length} flight${_flightSearchResults.length !== 1 ? 's' : ''} found</span>
+      <span class="fs-results-note">ℹ️ Amadeus test data — prices are indicative</span>
+      <a class="fs-btn-gf-sm" href="${buildGoogleFlightsUrl()}" target="_blank" rel="noopener">Real prices on Google Flights →</a>
+    </div>
+    ${_flightSearchResults.map((r, i) => buildFlightResultCard(r, i, cur)).join('')}
+  `;
+}
+
+function buildFlightResultCard(r, i, cur) {
+  const fmt = n => n != null ? Number(n).toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—';
+  const total = r.price * r.adults;
+  const ob    = r.outbound;
+  const ib    = r.inbound;
+
+  const dTime  = ob.departAt ? ob.departAt.substring(11, 16) : '—';
+  const aTime  = ob.arriveAt ? ob.arriveAt.substring(11, 16) : '—';
+  const dDay   = ob.departAt ? ob.departAt.substring(0, 10) : '';
+  const aDay   = ob.arriveAt ? ob.arriveAt.substring(0, 10) : '';
+  const dayDiff = (dDay && aDay)
+    ? Math.round((new Date(aDay) - new Date(dDay)) / 86400000) : 0;
+
+  const stopsLabel = ob.stops === 0 ? 'Direct' : `${ob.stops} stop${ob.stops > 1 ? 's' : ''} · ${ob.stopCodes.join(', ')}`;
+
+  function legHtml(leg, label) {
+    const lt = leg.departAt ? leg.departAt.substring(11, 16) : '—';
+    const at = leg.arriveAt ? leg.arriveAt.substring(11, 16) : '—';
+    const dd = leg.departAt ? leg.departAt.substring(0, 10) : '';
+    const ad = leg.arriveAt ? leg.arriveAt.substring(0, 10) : '';
+    const df = (dd && ad) ? Math.round((new Date(ad) - new Date(dd)) / 86400000) : 0;
+    const sl = leg.stops === 0 ? 'Direct' : `${leg.stops} stop${leg.stops > 1 ? 's' : ''} · ${leg.stopCodes.join(', ')}`;
+    return `
+      <div class="fs-leg">
+        <span class="fs-leg-label">${label}</span>
+        <div class="fs-leg-route">
+          <div class="fs-endpoint"><span class="fs-time">${lt}</span><span class="fs-iata">${leg.from}</span></div>
+          <div class="fs-route-mid">
+            <div class="fs-duration">${leg.duration}</div>
+            <div class="fs-route-line"></div>
+            <div class="fs-stops-label">${sl}</div>
+          </div>
+          <div class="fs-endpoint"><span class="fs-time">${at}${df > 0 ? `<sup>+${df}</sup>` : ''}</span><span class="fs-iata">${leg.to}</span></div>
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="fs-result-card" id="fs-card-${i}">
+      <div class="fs-card-main">
+        <div class="fs-airline-block">
+          <div class="fs-airline-badge">${r.airlineCode}</div>
+          <div class="fs-airline-name">${r.airline}</div>
+        </div>
+        <div class="fs-legs">
+          ${legHtml(ob, ib ? '↗ Out' : '')}
+          ${ib ? legHtml(ib, '↙ Ret') : ''}
+        </div>
+        <div class="fs-price-block">
+          <div class="fs-price-main">${cur} ${fmt(r.price)}</div>
+          <div class="fs-price-sub">/person${r.adults > 1 ? ` · ${cur} ${fmt(total)} total` : ''}</div>
+          <div class="fs-cabin-tag">${r.cabinClass.replace('_', ' ')}</div>
+        </div>
+        <div class="fs-card-btns">
+          <button class="fs-btn-alert" onclick="toggleAlertForm(${i})">🔔 Set Alert</button>
+          <a class="fs-btn-book" href="${buildGoogleFlightsUrl()}" target="_blank" rel="noopener">🔗 Book</a>
+        </div>
+      </div>
+      <div class="fs-alert-form" id="fs-alert-form-${i}" style="display:none;">
+        <label class="fs-af-label">Alert me when price drops below</label>
+        <div class="fs-af-row">
+          <span class="fs-af-cur">${cur}</span>
+          <input type="number" class="fs-af-input" id="fs-threshold-${i}"
+                 value="${Math.round(r.price * 0.9)}" min="1" placeholder="Price">
+          <button class="fs-af-create-btn" onclick="createFlightAlert(${i})">Create Alert</button>
+          <span class="fs-af-msg" id="fs-alert-msg-${i}"></span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleAlertForm(index) {
+  const form = document.getElementById(`fs-alert-form-${index}`);
+  if (!form) return;
+  const isOpen = form.style.display !== 'none';
+  // Close all open forms first
+  document.querySelectorAll('.fs-alert-form').forEach(f => { f.style.display = 'none'; });
+  document.querySelectorAll('.fs-btn-alert').forEach(b => b.classList.remove('fs-btn-alert--active'));
+  if (!isOpen) {
+    form.style.display = '';
+    form.closest('.fs-result-card')?.querySelector('.fs-btn-alert')?.classList.add('fs-btn-alert--active');
+  }
+}
+
+async function createFlightAlert(index) {
+  const r           = _flightSearchResults[index];
+  if (!r) return;
+  const thresholdEl = document.getElementById(`fs-threshold-${index}`);
+  const msgEl       = document.getElementById(`fs-alert-msg-${index}`);
+  const threshold   = parseFloat(thresholdEl?.value) || 0;
+
+  if (threshold <= 0) { msgEl.textContent = 'Enter a valid price.'; return; }
+
+  msgEl.textContent = 'Creating…';
+
+  try {
+    const resp = await fetch('/api/flight-alerts', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from:        r.outbound.from,
+        to:          r.outbound.to,
+        departDate:  r.outbound.departAt?.substring(0, 10) || document.getElementById('gfDepart')?.value || '',
+        returnDate:  r.inbound ? (r.inbound.departAt?.substring(0, 10) || undefined) : undefined,
+        adults:      r.adults,
+        cabinClass:  r.cabinClass,
+        threshold,
+        currency:    r.currency || TRIP_DATA.budget?.currency || 'AUD'
+      })
+    });
+
+    const data = await resp.json();
+
+    if (resp.ok) {
+      msgEl.textContent = '✅ Alert created!';
+      setTimeout(() => {
+        const form = document.getElementById(`fs-alert-form-${index}`);
+        if (form) form.style.display = 'none';
+        loadFlightAlerts();
+      }, 1200);
+    } else if (resp.status === 503 && data.code === 'KV_NOT_CONFIGURED') {
+      msgEl.textContent = '⚠️ Requires Vercel KV — see Settings.';
+    } else {
+      msgEl.textContent = '❌ ' + (data.error || 'Failed');
+    }
+  } catch (err) {
+    msgEl.textContent = '❌ ' + err.message;
+  }
+}
+
+async function loadFlightAlerts() {
+  try {
+    const resp = await fetch('/api/flight-alerts');
+    if (!resp.ok) return;
+    const data  = await resp.json();
+    _flightAlerts = data.alerts || [];
+    renderFlightAlerts();
+  } catch {
+    // Silent — KV may not be configured
+  }
+}
+
+function renderFlightAlerts() {
+  const container = document.getElementById('fsAlerts');
+  if (!container) return;
+
+  if (_flightAlerts.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  const origin = window.location.origin;
+
+  container.innerHTML = `
+    <div class="fs-alerts-header">
+      <span class="fs-alerts-title">🔔 Price Alerts</span>
+      <span class="fs-alerts-count">${_flightAlerts.length} active</span>
+      <button class="fs-btn-check-now" id="fsCheckBtn" onclick="checkAlerts()">Check Now</button>
+    </div>
+    <div class="fs-alerts-list">
+      ${_flightAlerts.map(a => `
+        <div class="fs-alert-item">
+          <div class="fs-ai-route">${a.from} → ${a.to}</div>
+          <div class="fs-ai-detail">${a.departDate}${a.returnDate ? ' · ↩ ' + a.returnDate : ''} · ${a.adults} pax · ${a.cabinClass}</div>
+          <div class="fs-ai-threshold">Alert below ${a.currency} ${Number(a.threshold).toLocaleString()}</div>
+          <div class="fs-ai-status ${a.triggered ? 'fs-ai-status--hit' : ''}">
+            ${a.lastPrice != null ? `Last price: ${a.currency} ${Number(a.lastPrice).toLocaleString()}` : 'Not checked yet'}
+            ${a.lastChecked ? ` · ${new Date(a.lastChecked).toLocaleDateString('en-AU')}` : ''}
+            ${a.triggered ? ' · ✅ Triggered!' : ''}
+          </div>
+          <button class="fs-ai-delete" onclick="deleteFlightAlert('${a.id}')" title="Remove alert">×</button>
+        </div>`).join('')}
+    </div>
+    <div class="fs-alerts-cron">
+      💡 Auto-check: set up a daily cron at
+      <a href="https://cron-job.org" target="_blank" rel="noopener">cron-job.org</a>
+      → POST <code>${origin}/api/check-alerts</code>
+    </div>
+  `;
+}
+
+async function deleteFlightAlert(alertId) {
+  try {
+    const resp = await fetch('/api/flight-alerts', {
+      method:  'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: alertId })
+    });
+    if (resp.ok) {
+      _flightAlerts = _flightAlerts.filter(a => a.id !== String(alertId));
+      renderFlightAlerts();
+    }
+  } catch {}
+}
+
+async function checkAlerts() {
+  const btn = document.getElementById('fsCheckBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try {
+    const resp = await fetch('/api/check-alerts', { method: 'POST' });
+    const data = await resp.json();
+    const msg  = data.triggered > 0
+      ? `${data.triggered} alert${data.triggered > 1 ? 's' : ''} triggered — check Telegram!`
+      : `Checked ${data.checked} alert${data.checked !== 1 ? 's' : ''} — no triggers`;
+    showSavedIndicator(msg);
+    loadFlightAlerts();
+  } catch (err) {
+    showSavedIndicator('Alert check failed: ' + err.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Check Now'; }
+  }
 }
 
 // ─── Flight Tracker ───────────────────────────────────────────────────────────
 
 function renderFlights() {
   populateFlightSearchDefaults();
+  loadFlightAlerts(); // Refresh price alerts panel whenever flights view is opened
   const container = document.getElementById('flightsContent');
   if (!container) return;
   if (!TRIP_DATA.flights) TRIP_DATA.flights = [];
