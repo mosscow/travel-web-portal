@@ -57,6 +57,7 @@ async function getCheapestPrice(alert) {
     departure_id:  alert.from,
     arrival_id:    alert.to,
     outbound_date: alert.departDate,
+    type:          alert.returnDate ? '1' : '2',  // 1=Round trip, 2=One way
     adults:        String(alert.adults || 1),
     travel_class:  CABIN_TO_GF[(alert.cabinClass || 'ECONOMY').toUpperCase()] || '1',
     currency:      alert.currency || 'AUD',

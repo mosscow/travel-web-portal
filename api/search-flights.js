@@ -106,15 +106,16 @@ export default async function handler(req, res) {
   const cur = (currencyCode || 'AUD').toUpperCase();
 
   const params = new URLSearchParams({
-    engine:       'google_flights',
-    departure_id: from.toUpperCase(),
-    arrival_id:   to.toUpperCase(),
+    engine:        'google_flights',
+    departure_id:  from.toUpperCase(),
+    arrival_id:    to.toUpperCase(),
     outbound_date: departDate,
-    adults:       String(parseInt(adults) || 1),
-    travel_class: CABIN_TO_GF[(cabinClass || 'ECONOMY').toUpperCase()] || '1',
-    currency:     cur,
-    hl:           'en',
-    api_key:      process.env.SERPAPI_KEY
+    type:          returnDate ? '1' : '2',   // 1=Round trip, 2=One way
+    adults:        String(parseInt(adults) || 1),
+    travel_class:  CABIN_TO_GF[(cabinClass || 'ECONOMY').toUpperCase()] || '1',
+    currency:      cur,
+    hl:            'en',
+    api_key:       process.env.SERPAPI_KEY
   });
   if (returnDate) params.set('return_date', returnDate);
 
