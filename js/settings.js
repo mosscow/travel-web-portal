@@ -222,15 +222,85 @@ function initSettings() {
   
   // Update user display after rendering
   updateCurrentUserDisplay();
+
+  // Async: hydrate all admin fields from KV (overwrites localStorage cache)
+  refreshSettingsFromServer();
+}
+
+/**
+ * Load settings from KV and populate form fields + localStorage.
+ * Called automatically after initSettings() renders the HTML.
+ */
+async function refreshSettingsFromServer() {
+  try {
+    const resp = await fetch('/api/settings');
+    if (!resp.ok) return; // KV not configured or network error — stay on localStorage
+
+    const { settings } = await resp.json();
+    if (!settings || !Object.keys(settings).length) return;
+
+    // Map: KV key → { elementId, localStorageKey }
+    const fieldMap = {
+      claudeApiKey:   { id: 'claudeApiKey',   ls: 'claude_api_key' },
+      claudeModel:    { id: 'claudeModel',     ls: 'claude_model' },
+      maxTokens:      { id: 'maxTokens',       ls: 'max_tokens' },
+      temperature:    { id: 'temperature',     ls: 'temperature' },
+      googleMapsKey:  { id: 'googleMapsKey',   ls: 'google_maps_api_key' },
+      telegramToken:  { id: 'telegramToken',   ls: 'telegram_token' },
+      telegramChatId: { id: 'telegramChatId',  ls: 'telegram_chat_id' },
+    };
+
+    let updated = 0;
+    for (const [key, { id, ls }] of Object.entries(fieldMap)) {
+      const val = settings[key];
+      if (!val) continue;
+      // Update form field if it exists on the page
+      const el = document.getElementById(id);
+      if (el) { el.value = val; updated++; }
+      // Sync to localStorage as local cache
+      localStorage.setItem(ls, val);
+    }
+
+    if (updated > 0) {
+      // Show a subtle confirmation that server settings loaded
+      const indicator = document.createElement('div');
+      indicator.style.cssText = 'position:fixed;bottom:16px;right:16px;background:#1976D2;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;z-index:9999;opacity:0;transition:opacity 0.3s;';
+      indicator.textContent = '⚡ Settings synced from server';
+      document.body.appendChild(indicator);
+      requestAnimationFrame(() => { indicator.style.opacity = '1'; });
+      setTimeout(() => {
+        indicator.style.opacity = '0';
+        setTimeout(() => indicator.remove(), 400);
+      }, 2500);
+    }
+  } catch {
+    // Silent — no KV or network issue, localStorage is the fallback
+  }
+}
+
+/**
+ * Push a settings patch to KV for cross-device sync.
+ * Fires-and-forgets; localStorage is already saved by the caller.
+ */
+async function syncSettingsToServer(patch) {
+  try {
+    await fetch('/api/settings', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(patch)
+    });
+  } catch {
+    // Silent — falls back to localStorage-only
+  }
 }
 
 /**
  * Save Claude config
  */
 function saveClaudeConfig() {
-  const apiKey = document.getElementById('claudeApiKey').value;
-  const model = document.getElementById('claudeModel').value;
-  const maxTokens = document.getElementById('maxTokens').value;
+  const apiKey      = document.getElementById('claudeApiKey').value;
+  const model       = document.getElementById('claudeModel').value;
+  const maxTokens   = document.getElementById('maxTokens').value;
   const temperature = document.getElementById('temperature').value;
 
   if (!apiKey) {
@@ -242,6 +312,9 @@ function saveClaudeConfig() {
   localStorage.setItem('claude_model', model);
   localStorage.setItem('max_tokens', maxTokens);
   localStorage.setItem('temperature', temperature);
+
+  // Sync to server for cross-device availability
+  syncSettingsToServer({ claudeApiKey: apiKey, claudeModel: model, maxTokens, temperature });
 
   document.getElementById('claudeMessage').innerHTML = showMessage('Claude configuration saved!', 'success');
 }
@@ -302,6 +375,7 @@ function saveGoogleMapsConfig() {
   }
 
   localStorage.setItem(CONFIG.STORAGE_KEYS.GOOGLE_MAPS_KEY, key);
+  syncSettingsToServer({ googleMapsKey: key });
   msgEl.innerHTML = showMessage('Google Maps key saved!', 'success');
 }
 
@@ -319,6 +393,7 @@ function saveTelegramConfig() {
 
   localStorage.setItem('telegram_token', token);
   localStorage.setItem('telegram_chat_id', chatId);
+  syncSettingsToServer({ telegramToken: token, telegramChatId: chatId });
   document.getElementById('telegramMessage').innerHTML = showMessage('Saved. Click Test to verify connection.', 'success');
 }
 
@@ -397,6 +472,9 @@ async function fetchTelegramChatId() {
     if (userMsg) {
       const chatId = String(userMsg.message.chat.id);
       document.getElementById('telegramChatId').value = chatId;
+      // Pre-save the detected ID so admin doesn't have to click Save separately
+      localStorage.setItem('telegram_chat_id', chatId);
+      syncSettingsToServer({ telegramChatId: chatId });
       msgEl.innerHTML = showMessage(`✅ Chat ID found: ${chatId} — click Save then Test to confirm.`, 'success');
     } else {
       msgEl.innerHTML = showMessage('No messages found. Open Telegram, send /start to your bot, then click Get Chat ID again.', 'error');
