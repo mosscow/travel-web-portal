@@ -236,12 +236,24 @@ function initApp() {
             <div class="gf-fields-row">
               <div class="gf-field gf-field-airport">
                 <label class="gf-label">From</label>
-                <input type="text" id="gfFrom" class="gf-input" placeholder="SYD">
+                <div class="gf-airport-wrap">
+                  <input type="text" id="gfFrom" class="gf-input gf-airport-input"
+                         placeholder="City or airport…" autocomplete="off"
+                         oninput="airportSearch(this,'gfFromDrop')"
+                         onblur="closeAirportDrop('gfFromDrop')">
+                  <div class="gf-airport-drop" id="gfFromDrop"></div>
+                </div>
               </div>
               <button class="gf-swap-btn" onclick="swapFlightEndpoints()" title="Swap">⇌</button>
               <div class="gf-field gf-field-airport">
                 <label class="gf-label">To</label>
-                <input type="text" id="gfTo" class="gf-input" placeholder="FCO">
+                <div class="gf-airport-wrap">
+                  <input type="text" id="gfTo" class="gf-input gf-airport-input"
+                         placeholder="City or airport…" autocomplete="off"
+                         oninput="airportSearch(this,'gfToDrop')"
+                         onblur="closeAirportDrop('gfToDrop')">
+                  <div class="gf-airport-drop" id="gfToDrop"></div>
+                </div>
               </div>
               <div class="gf-field gf-field-date">
                 <label class="gf-label">Depart</label>
@@ -1579,6 +1591,69 @@ function populateFlightSearchDefaults() {
     if (depart && first.startDate) depart.value = first.startDate;
     if (ret    && last.endDate)    ret.value    = last.endDate;
   }
+}
+
+// ─── Airport Autocomplete ─────────────────────────────────────────────────────
+
+let _airportTimer = null;
+
+async function airportSearch(input, dropId) {
+  const q    = input.value.trim();
+  const drop = document.getElementById(dropId);
+  if (!drop) return;
+
+  if (q.length < 2) {
+    drop.innerHTML = '';
+    drop.style.display = 'none';
+    return;
+  }
+
+  clearTimeout(_airportTimer);
+  _airportTimer = setTimeout(async () => {
+    try {
+      const resp = await fetch(
+        `https://autocomplete.travelpayouts.com/places2?locale=en&types[]=airport&types[]=city&term=${encodeURIComponent(q)}`
+      );
+      if (!resp.ok) return;
+      const results = await resp.json();
+      if (!results.length) { drop.style.display = 'none'; return; }
+
+      drop.innerHTML = results.slice(0, 7).map(item => {
+        const code    = item.code;
+        const city    = item.city_name || item.name;
+        const country = item.country_name || '';
+        const icon    = item.type === 'airport' ? '✈️' : '🏙️';
+        const label   = item.type === 'airport' && item.name !== city
+          ? `${city} — ${item.name}`
+          : city;
+        return `<div class="gf-drop-item"
+                     onmousedown="selectAirport('${input.id}','${dropId}','${code}','${label.replace(/'/g,"\\'")}')">
+          <span class="gf-drop-icon">${icon}</span>
+          <span class="gf-drop-code">${code}</span>
+          <span class="gf-drop-label">${label}</span>
+          <span class="gf-drop-country">${country}</span>
+        </div>`;
+      }).join('');
+      drop.style.display = 'block';
+    } catch {
+      drop.style.display = 'none';
+    }
+  }, 220);
+}
+
+function selectAirport(inputId, dropId, code, label) {
+  const input = document.getElementById(inputId);
+  const drop  = document.getElementById(dropId);
+  if (input) input.value = code;   // store IATA code as the field value
+  if (drop)  { drop.innerHTML = ''; drop.style.display = 'none'; }
+}
+
+function closeAirportDrop(dropId) {
+  // Small delay so onmousedown on a drop item fires before blur hides it
+  setTimeout(() => {
+    const drop = document.getElementById(dropId);
+    if (drop) { drop.innerHTML = ''; drop.style.display = 'none'; }
+  }, 180);
 }
 
 function swapFlightEndpoints() {

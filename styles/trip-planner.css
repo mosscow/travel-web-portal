@@ -2676,6 +2676,63 @@ code {
   background: rgba(255,255,255,0.2);
 }
 
+/* Airport From/To inputs — white bg so entered IATA codes are clearly readable */
+.gf-airport-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.gf-airport-input {
+  background: #fff !important;
+  color: #1a1a2e !important;
+  border-color: rgba(255,255,255,0.6) !important;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+.gf-airport-input::placeholder {
+  color: #9e9e9e !important;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.gf-airport-input:focus {
+  background: #fff !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+}
+
+/* Autocomplete dropdown */
+.gf-airport-drop {
+  display: none;
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.gf-drop-item {
+  display: grid;
+  grid-template-columns: 20px 42px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+}
+.gf-drop-item:last-child { border-bottom: none; }
+.gf-drop-item:hover { background: #e3f2fd; }
+
+.gf-drop-icon  { font-size: 12px; text-align: center; }
+.gf-drop-code  { font-size: 13px; font-weight: 800; color: #1976D2; letter-spacing: 0.5px; }
+.gf-drop-label { font-size: 12px; color: #212121; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gf-drop-country { font-size: 10px; color: #9e9e9e; white-space: nowrap; }
+
 .gf-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; cursor: pointer; }
 
 .gf-select {
