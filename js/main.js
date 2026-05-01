@@ -476,6 +476,8 @@ function switchTrip(id) {
   renderSummary();
   renderTripSummaryBar();
   renderBudget();
+  // Refresh flights view if it's currently visible
+  if (currentPlannerView === 'flights') renderFlights();
 
   if (TRIP_DATA.sections && TRIP_DATA.sections.length > 0) {
     selectSegment(TRIP_DATA.sections[0].id, 1);
@@ -2003,7 +2005,14 @@ async function checkAlerts() {
 
 function renderFlights() {
   populateFlightSearchDefaults();
-  loadFlightAlerts(); // Refresh price alerts panel whenever flights view is opened
+  loadFlightAlerts();
+
+  // Clear search results whenever the view re-renders (trip switch or view toggle)
+  // so stale results from a different trip are never shown
+  _flightSearchResults = [];
+  const resultsEl = document.getElementById('fsResults');
+  if (resultsEl) resultsEl.innerHTML = '';
+
   const container = document.getElementById('flightsContent');
   if (!container) return;
   if (!TRIP_DATA.flights) TRIP_DATA.flights = [];
