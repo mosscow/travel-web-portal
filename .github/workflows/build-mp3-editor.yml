@@ -5,10 +5,12 @@ on:
     branches: [ "claude/android-mp3-editor-app-nv6kz", "main" ]
     paths:
       - 'mp3-editor-app/**'
+      - '.github/workflows/build-mp3-editor.yml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'mp3-editor-app/**'
+      - '.github/workflows/build-mp3-editor.yml'
   workflow_dispatch:
 
 jobs:
@@ -54,31 +56,43 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/release-build.log
           exit ${PIPESTATUS[0]}
 
-      - name: Post build failure as PR comment
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Report build failure
+        if: failure()
+        run: |
+          LOG=""
+          [ -f /tmp/debug-build.log ] && LOG="/tmp/debug-build.log"
+          [ -f /tmp/release-build.log ] && LOG="${LOG} /tmp/release-build.log"
+          echo "### Build Failure" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat $LOG 2>/dev/null | grep -E "^(e:|error:|FAILURE:|BUILD FAILED|> |\* What|Caused by|Exception)" | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "--- Full tail of build log ---"
+          cat $LOG 2>/dev/null | tail -150
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            let combined = '';
-            for (const f of ['/tmp/debug-build.log', '/tmp/release-build.log']) {
-              try { combined += fs.readFileSync(f, 'utf8'); } catch(e) {}
-            }
-            const lines = combined.split('\n');
-            const errors = lines.filter(l =>
-              (l.includes('error:') || l.match(/^> (What went wrong|Caused by)/) ||
-               l.includes('FAILURE:') || l.includes('BUILD FAILED') ||
-               (l.startsWith('> ') && l.length > 3))
-              && !l.includes('[deprecation]')
-            ).slice(0, 100);
-            if (errors.length === 0) errors.push('(no error lines found — check full run log)');
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### CI Build Failure\n\`\`\`\n${errors.join('\n')}\n\`\`\``
-            });
+          name: build-logs
+          path: |
+            /tmp/debug-build.log
+            /tmp/release-build.log
+          retention-days: 7
+
+      - name: Post PR comment with failure
+        if: failure() && github.event_name == 'pull_request'
+        run: |
+          {
+            echo "### CI Build Failure (run #${{ github.run_number }})"
+            echo '```'
+            grep -hE "^(e:|error:|FAILURE:|BUILD FAILED|> What|> Caused)" \
+              /tmp/debug-build.log /tmp/release-build.log 2>/dev/null | head -60 \
+              || echo "Build failed — see: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo '```'
+          } > /tmp/pr-body.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/pr-body.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4

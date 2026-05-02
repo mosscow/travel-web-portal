@@ -6,17 +6,25 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.os.Environment
-import com.mpatric.mp3agic.AbstractID3v2Tag
-import com.mpatric.mp3agic.ID3v1Genres
-import com.mpatric.mp3agic.ID3v24Tag
-import com.mpatric.mp3agic.Mp3File as AgicMp3File
 import com.mp3editor.app.data.Mp3File
 import com.mp3editor.app.data.TagData
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.Tag
+import org.jaudiotagger.tag.images.StandardArtwork
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.Locale
 
 object Mp3Utils {
+
+    init {
+        // Suppress JAudioTagger's verbose logging
+        try {
+            val logManager = java.util.logging.LogManager.getLogManager()
+            logManager.reset()
+        } catch (e: Exception) { /* ignore */ }
+    }
 
     fun scanMp3Files(context: Context): List<Mp3File> {
         val files = mutableListOf<Mp3File>()
@@ -87,77 +95,66 @@ object Mp3Utils {
 
     fun readTags(filePath: String): TagData {
         return try {
-            val mp3 = AgicMp3File(filePath)
-            when {
-                mp3.hasId3v2Tag() -> {
-                    val tag = mp3.id3v2Tag as AbstractID3v2Tag
-                    TagData(
-                        title = tag.title ?: "",
-                        artist = tag.artist ?: "",
-                        album = tag.album ?: "",
-                        albumArtist = tag.albumArtist ?: "",
-                        track = tag.track ?: "",
-                        year = tag.year ?: "",
-                        genre = tag.genreDescription ?: "",
-                        comment = tag.comment ?: "",
-                        composer = tag.composer ?: "",
-                        albumArt = tag.albumImage,
-                        albumArtMimeType = tag.albumImageMimeType
-                    )
-                }
-                mp3.hasId3v1Tag() -> {
-                    val tag = mp3.id3v1Tag
-                    TagData(
-                        title = tag.title ?: "",
-                        artist = tag.artist ?: "",
-                        album = tag.album ?: "",
-                        year = tag.year ?: "",
-                        genre = tag.genreDescription ?: "",
-                        comment = tag.comment ?: ""
-                    )
-                }
-                else -> TagData()
-            }
+            val audioFile = AudioFileIO.read(File(filePath))
+            val tag = audioFile.tag ?: return TagData()
+            val artwork = try { tag.firstArtwork } catch (e: Exception) { null }
+            TagData(
+                title = tag.getFirst(FieldKey.TITLE),
+                artist = tag.getFirst(FieldKey.ARTIST),
+                album = tag.getFirst(FieldKey.ALBUM),
+                albumArtist = safeGetField(tag, FieldKey.ALBUM_ARTIST),
+                track = tag.getFirst(FieldKey.TRACK),
+                year = tag.getFirst(FieldKey.YEAR),
+                genre = tag.getFirst(FieldKey.GENRE),
+                comment = tag.getFirst(FieldKey.COMMENT),
+                composer = safeGetField(tag, FieldKey.COMPOSER),
+                albumArt = artwork?.binaryData,
+                albumArtMimeType = artwork?.mimeType
+            )
         } catch (e: Exception) {
             TagData()
         }
     }
 
+    private fun safeGetField(tag: Tag, key: FieldKey): String {
+        return try { tag.getFirst(key) } catch (e: Exception) { "" }
+    }
+
     fun saveTags(filePath: String, tags: TagData): Boolean {
         return try {
-            val mp3 = AgicMp3File(filePath)
-            val tag: AbstractID3v2Tag = if (mp3.hasId3v2Tag()) mp3.id3v2Tag as AbstractID3v2Tag else ID3v24Tag()
+            val audioFile = AudioFileIO.read(File(filePath))
+            val tag = audioFile.tagOrCreateDefault
 
-            tag.title = tags.title.ifBlank { null }
-            tag.artist = tags.artist.ifBlank { null }
-            tag.album = tags.album.ifBlank { null }
-            tag.albumArtist = tags.albumArtist.ifBlank { null }
-            tag.track = tags.track.ifBlank { null }
-            tag.year = tags.year.ifBlank { null }
-            if (tags.genre.isNotBlank()) {
-                val genreId = genreNameToId(tags.genre)
-                if (genreId != 255) tag.genre = genreId
-            }
-            tag.comment = tags.comment.ifBlank { null }
-            tag.composer = tags.composer.ifBlank { null }
+            safeSetField(tag, FieldKey.TITLE, tags.title)
+            safeSetField(tag, FieldKey.ARTIST, tags.artist)
+            safeSetField(tag, FieldKey.ALBUM, tags.album)
+            safeSetField(tag, FieldKey.ALBUM_ARTIST, tags.albumArtist)
+            safeSetField(tag, FieldKey.TRACK, tags.track)
+            safeSetField(tag, FieldKey.YEAR, tags.year)
+            safeSetField(tag, FieldKey.GENRE, tags.genre)
+            safeSetField(tag, FieldKey.COMMENT, tags.comment)
+            safeSetField(tag, FieldKey.COMPOSER, tags.composer)
 
             val albumArt = tags.albumArt
             if (albumArt != null && albumArt.isNotEmpty()) {
-                tag.setAlbumImage(albumArt, tags.albumArtMimeType ?: "image/jpeg")
+                val artwork = StandardArtwork()
+                artwork.binaryData = albumArt
+                artwork.mimeType = tags.albumArtMimeType ?: "image/jpeg"
+                tag.setField(artwork)
             } else if (albumArt == null) {
-                tag.clearAlbumImage()
+                try { tag.deleteArtworkField() } catch (e: Exception) { /* no artwork to delete */ }
             }
 
-            mp3.id3v2Tag = tag
-
-            val tempFile = File(filePath + ".tmp")
-            mp3.save(tempFile.absolutePath)
-            tempFile.renameTo(File(filePath))
+            audioFile.commit()
             true
         } catch (e: Exception) {
             e.printStackTrace()
             false
         }
+    }
+
+    private fun safeSetField(tag: Tag, key: FieldKey, value: String) {
+        try { tag.setField(key, value) } catch (e: Exception) { /* field not supported by tag format */ }
     }
 
     fun trimMp3(inputPath: String, outputPath: String, startMs: Long, endMs: Long): Boolean {
@@ -241,13 +238,5 @@ object Mp3Utils {
             bytes >= 1024 -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
             else -> "$bytes B"
         }
-    }
-
-    private fun genreNameToId(name: String): Int {
-        val genres = ID3v1Genres.GENRES
-        for (i in genres.indices) {
-            if (genres[i].equals(name, ignoreCase = true)) return i
-        }
-        return 255
     }
 }
