@@ -6,9 +6,9 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.os.Environment
-import com.mpatric.mp3agic.AbstractID3v2Tag
 import com.mpatric.mp3agic.ID3v1Tag
 import com.mpatric.mp3agic.ID3v24Tag
+import com.mpatric.mp3agic.ID3v2Tag
 import com.mpatric.mp3agic.Mp3File as AgicMp3File
 import com.mp3editor.app.data.Mp3File
 import com.mp3editor.app.data.TagData
@@ -126,7 +126,7 @@ object Mp3Utils {
     fun saveTags(filePath: String, tags: TagData): Boolean {
         return try {
             val mp3 = AgicMp3File(filePath)
-            val tag: AbstractID3v2Tag = if (mp3.hasId3v2Tag()) mp3.id3v2Tag else ID3v24Tag()
+            val tag: ID3v2Tag = if (mp3.hasId3v2Tag()) mp3.id3v2Tag else ID3v24Tag()
 
             tag.title = tags.title.ifBlank { null }
             tag.artist = tags.artist.ifBlank { null }
