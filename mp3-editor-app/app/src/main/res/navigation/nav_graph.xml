@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/fileBrowserFragment">
+
+    <fragment
+        android:id="@+id/fileBrowserFragment"
+        android:name="com.mp3editor.app.ui.browser.FileBrowserFragment"
+        android:label="@string/title_file_browser"
+        tools:layout="@layout/fragment_file_browser">
+        <action
+            android:id="@+id/action_browser_to_tagEditor"
+            app:destination="@id/tagEditorFragment" />
+        <action
+            android:id="@+id/action_browser_to_player"
+            app:destination="@id/playerFragment" />
+        <action
+            android:id="@+id/action_browser_to_trimmer"
+            app:destination="@id/trimmerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/tagEditorFragment"
+        android:name="com.mp3editor.app.ui.editor.TagEditorFragment"
+        android:label="@string/title_tag_editor"
+        tools:layout="@layout/fragment_tag_editor">
+        <argument
+            android:name="filePath"
+            app:argType="string" />
+        <action
+            android:id="@+id/action_tagEditor_to_player"
+            app:destination="@id/playerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/playerFragment"
+        android:name="com.mp3editor.app.ui.player.PlayerFragment"
+        android:label="@string/title_player"
+        tools:layout="@layout/fragment_player">
+        <argument
+            android:name="filePath"
+            app:argType="string"
+            android:defaultValue="" />
+        <action
+            android:id="@+id/action_player_to_tagEditor"
+            app:destination="@id/tagEditorFragment" />
+        <action
+            android:id="@+id/action_player_to_trimmer"
+            app:destination="@id/trimmerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/trimmerFragment"
+        android:name="com.mp3editor.app.ui.trimmer.TrimmerFragment"
+        android:label="@string/title_trimmer"
+        tools:layout="@layout/fragment_trimmer">
+        <argument
+            android:name="filePath"
+            app:argType="string" />
+    </fragment>
+
+</navigation>

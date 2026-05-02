@@ -1,0 +1,76 @@
+name: Build MP3 Editor APK
+
+on:
+  push:
+    branches: [ "claude/android-mp3-editor-app-nv6kz", "main" ]
+    paths:
+      - 'mp3-editor-app/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'mp3-editor-app/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug & Release APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('mp3-editor-app/**/*.gradle*', 'mp3-editor-app/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x mp3-editor-app/gradlew
+
+      - name: Build Debug APK
+        working-directory: mp3-editor-app
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Build Release APK (signed with debug key)
+        working-directory: mp3-editor-app
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MP3-Editor-debug
+          path: mp3-editor-app/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MP3-Editor-release
+          path: mp3-editor-app/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Create Release (on push to main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "MP3 Editor v${{ github.run_number }}"
+          body: "Android MP3 Editor APK - auto-built from commit ${{ github.sha }}"
+          files: |
+            mp3-editor-app/app/build/outputs/apk/debug/app-debug.apk
+            mp3-editor-app/app/build/outputs/apk/release/app-release.apk
+          draft: false
+          prerelease: false

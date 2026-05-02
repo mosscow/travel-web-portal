@@ -1,0 +1,3 @@
+-keep class com.mpatric.mp3agic.** { *; }
+-dontwarn com.mpatric.mp3agic.**
+-keep class com.mp3editor.app.** { *; }
