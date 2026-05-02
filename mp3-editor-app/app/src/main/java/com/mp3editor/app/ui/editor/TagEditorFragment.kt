@@ -1,8 +1,11 @@
 package com.mp3editor.app.ui.editor
 
-import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -141,6 +144,20 @@ class TagEditorFragment : Fragment(), MenuProvider {
     }
 
     private fun saveAndClose() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Write Permission Required")
+                .setMessage("To save tags on Android 11+, grant \"All Files Access\" in Settings.")
+                .setPositiveButton("Open Settings") { _, _ ->
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                            Uri.fromParts("package", requireContext().packageName, null))
+                    )
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            return
+        }
         viewModel.updateTags(collectFields())
         viewModel.saveTags()
     }

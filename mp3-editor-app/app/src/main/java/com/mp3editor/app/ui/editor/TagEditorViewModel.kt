@@ -1,6 +1,7 @@
 package com.mp3editor.app.ui.editor
 
 import android.app.Application
+import android.media.MediaScannerConnection
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -48,7 +49,10 @@ class TagEditorViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             _isSaving.value = true
             val success = withContext(Dispatchers.IO) { Mp3Utils.saveTags(filePath, current) }
-            if (success) originalTags = current.copy()
+            if (success) {
+                originalTags = current.copy()
+                MediaScannerConnection.scanFile(getApplication(), arrayOf(filePath), null, null)
+            }
             _saveResult.value = success
             _isSaving.value = false
         }

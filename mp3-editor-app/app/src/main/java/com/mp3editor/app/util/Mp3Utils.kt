@@ -158,7 +158,10 @@ object Mp3Utils {
     }
 
     private fun safeSetField(tag: Tag, key: FieldKey, value: String) {
-        try { tag.setField(key, value) } catch (e: Exception) { /* field not supported by tag format */ }
+        try {
+            if (value.isBlank()) tag.deleteField(key)
+            else tag.setField(key, value)
+        } catch (e: Exception) { /* unsupported field for this tag format */ }
     }
 
     fun trimMp3(inputPath: String, outputPath: String, startMs: Long, endMs: Long): Boolean {
