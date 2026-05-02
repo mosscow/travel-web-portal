@@ -18,6 +18,9 @@ jobs:
     name: Build Debug & Release APKs
     runs-on: ubuntu-latest
 
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2 -Dfile.encoding=UTF-8"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +45,18 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x mp3-editor-app/gradlew
 
+      - name: Check build environment
+        working-directory: mp3-editor-app
+        run: |
+          echo "=== Java version ==="
+          java -version
+          echo "=== ANDROID_HOME: ${ANDROID_HOME:-NOT_SET} ==="
+          echo "=== ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT_SET} ==="
+          echo "=== Available SDK platforms ==="
+          ls "${ANDROID_HOME}/platforms/" 2>/dev/null || echo "No platforms dir"
+          echo "=== Gradle wrapper version ==="
+          ./gradlew --version --no-daemon 2>&1 | head -10
+
       - name: Build Debug APK
         id: build_debug
         working-directory: mp3-editor-app
@@ -59,15 +74,17 @@ jobs:
       - name: Report build failure
         if: failure()
         run: |
-          LOG=""
-          [ -f /tmp/debug-build.log ] && LOG="/tmp/debug-build.log"
-          [ -f /tmp/release-build.log ] && LOG="${LOG} /tmp/release-build.log"
+          LOG_ARGS=""
+          [ -f /tmp/debug-build.log ] && LOG_ARGS="/tmp/debug-build.log"
+          [ -f /tmp/release-build.log ] && LOG_ARGS="$LOG_ARGS /tmp/release-build.log"
           echo "### Build Failure" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -hiE "(error:|e: |FAILURE:|BUILD FAILED|Could not resolve|> Task|Caused by:|Unresolved reference|No such property|Unresolved:)" $LOG 2>/dev/null | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
+          grep -hiE "(error:|e: |FAILURE:|BUILD FAILED|Could not resolve|> Task|Caused by:|Unresolved reference|No such property|Unresolved:|SDK location)" \
+            $LOG_ARGS 2>/dev/null | head -80 >> "$GITHUB_STEP_SUMMARY" \
+            || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "--- Full tail of build log (last 200 lines) ---"
-          cat $LOG 2>/dev/null | tail -200
+          [ -n "$LOG_ARGS" ] && tail -200 $LOG_ARGS || echo "No log files found"
 
       - name: Upload build logs on failure
         if: failure()
@@ -78,23 +95,29 @@ jobs:
             /tmp/debug-build.log
             /tmp/release-build.log
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Post PR comment with failure
         if: failure() && github.event_name == 'pull_request'
-        run: |
-          {
-            echo "### CI Build Failure (run #${{ github.run_number }})"
-            echo '```'
-            grep -hE "^(e:|error:|FAILURE:|BUILD FAILED|> What|> Caused)" \
-              /tmp/debug-build.log /tmp/release-build.log 2>/dev/null | head -60 \
-              || echo "Build failed — see: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo '```'
-          } > /tmp/pr-body.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/pr-body.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ERRORS=$(grep -hiE "(e: |error:|FAILURE:|BUILD FAILED|Could not resolve|Unresolved reference|SDK location)" \
+            /tmp/debug-build.log /tmp/release-build.log 2>/dev/null | head -40 \
+            || echo "Build failed — see ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          BODY="### CI Build Failure (run #${{ github.run_number }})
+          \`\`\`
+          ${ERRORS}
+          \`\`\`"
+          curl -s -f \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "$(jq -n --arg body "$BODY" '{"body":$body}')" \
+            || echo "curl comment failed with $?"
 
       - name: Upload Debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: MP3-Editor-debug
@@ -102,6 +125,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Release APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: MP3-Editor-release
