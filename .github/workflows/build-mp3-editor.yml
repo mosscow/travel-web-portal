@@ -1,0 +1,146 @@
+name: Build MP3 Editor APK
+
+on:
+  push:
+    branches: [ "claude/android-mp3-editor-app-nv6kz", "main" ]
+    paths:
+      - 'mp3-editor-app/**'
+      - '.github/workflows/build-mp3-editor.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'mp3-editor-app/**'
+      - '.github/workflows/build-mp3-editor.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug & Release APKs
+    runs-on: ubuntu-latest
+
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.workers.max=2 -Dfile.encoding=UTF-8"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('mp3-editor-app/**/*.gradle*', 'mp3-editor-app/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x mp3-editor-app/gradlew
+
+      - name: Check build environment
+        working-directory: mp3-editor-app
+        run: |
+          echo "=== Java version ==="
+          java -version
+          echo "=== ANDROID_HOME: ${ANDROID_HOME:-NOT_SET} ==="
+          echo "=== ANDROID_SDK_ROOT: ${ANDROID_SDK_ROOT:-NOT_SET} ==="
+          echo "=== Available SDK platforms ==="
+          ls "${ANDROID_HOME}/platforms/" 2>/dev/null || echo "No platforms dir"
+          echo "=== Gradle wrapper version ==="
+          ./gradlew --version --no-daemon 2>&1 | head -10
+
+      - name: Build Debug APK
+        id: build_debug
+        working-directory: mp3-editor-app
+        run: |
+          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee /tmp/debug-build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Build Release APK (signed with debug key)
+        id: build_release
+        working-directory: mp3-editor-app
+        run: |
+          ./gradlew assembleRelease --no-daemon --info 2>&1 | tee /tmp/release-build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Report build failure
+        if: failure()
+        run: |
+          LOG_ARGS=""
+          [ -f /tmp/debug-build.log ] && LOG_ARGS="/tmp/debug-build.log"
+          [ -f /tmp/release-build.log ] && LOG_ARGS="$LOG_ARGS /tmp/release-build.log"
+          echo "### Build Failure" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -hiE "(error:|e: |FAILURE:|BUILD FAILED|Could not resolve|> Task|Caused by:|Unresolved reference|No such property|Unresolved:|SDK location)" \
+            $LOG_ARGS 2>/dev/null | head -80 >> "$GITHUB_STEP_SUMMARY" \
+            || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "--- Full tail of build log (last 200 lines) ---"
+          [ -n "$LOG_ARGS" ] && tail -200 $LOG_ARGS || echo "No log files found"
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            /tmp/debug-build.log
+            /tmp/release-build.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Post PR comment with failure
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ERRORS=$(grep -hiE "(e: |error:|FAILURE:|BUILD FAILED|Could not resolve|Unresolved reference|SDK location)" \
+            /tmp/debug-build.log /tmp/release-build.log 2>/dev/null | head -40 \
+            || echo "Build failed — see ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          BODY="### CI Build Failure (run #${{ github.run_number }})
+          \`\`\`
+          ${ERRORS}
+          \`\`\`"
+          curl -s -f \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "$(jq -n --arg body "$BODY" '{"body":$body}')" \
+            || echo "curl comment failed with $?"
+
+      - name: Upload Debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MP3-Editor-debug
+          path: mp3-editor-app/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MP3-Editor-release
+          path: mp3-editor-app/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Create Release (on push to main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "MP3 Editor v${{ github.run_number }}"
+          body: "Android MP3 Editor APK - auto-built from commit ${{ github.sha }}"
+          files: |
+            mp3-editor-app/app/build/outputs/apk/debug/app-debug.apk
+            mp3-editor-app/app/build/outputs/apk/release/app-release.apk
+          draft: false
+          prerelease: false

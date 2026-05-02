@@ -1,0 +1,3 @@
+-keep class org.jaudiotagger.** { *; }
+-dontwarn org.jaudiotagger.**
+-keep class com.mp3editor.app.** { *; }
