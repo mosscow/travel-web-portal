@@ -141,9 +141,10 @@ object Mp3Utils {
             tag.comment = tags.comment.ifBlank { null }
             tag.composer = tags.composer.ifBlank { null }
 
-            if (tags.albumArt != null && tags.albumArt.isNotEmpty()) {
-                tag.setAlbumImage(tags.albumArt, tags.albumArtMimeType ?: "image/jpeg")
-            } else if (tags.albumArt == null) {
+            val albumArt = tags.albumArt
+            if (albumArt != null && albumArt.isNotEmpty()) {
+                tag.setAlbumImage(albumArt, tags.albumArtMimeType ?: "image/jpeg")
+            } else if (albumArt == null) {
                 tag.clearAlbumImage()
             }
 
