@@ -7,7 +7,7 @@ import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.os.Environment
 import com.mpatric.mp3agic.AbstractID3v2Tag
-import com.mpatric.mp3agic.ID3v1Tag
+import com.mpatric.mp3agic.ID3v1Genres
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File as AgicMp3File
 import com.mp3editor.app.data.Mp3File
@@ -243,7 +243,7 @@ object Mp3Utils {
     }
 
     private fun genreNameToId(name: String): Int {
-        val genres = ID3v1Tag.genres
+        val genres = ID3v1Genres.GENRES
         for (i in genres.indices) {
             if (genres[i].equals(name, ignoreCase = true)) return i
         }
