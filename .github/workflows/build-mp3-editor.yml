@@ -41,12 +41,44 @@ jobs:
         run: chmod +x mp3-editor-app/gradlew
 
       - name: Build Debug APK
+        id: build_debug
         working-directory: mp3-editor-app
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/debug-build.log
+          exit ${PIPESTATUS[0]}
 
       - name: Build Release APK (signed with debug key)
+        id: build_release
         working-directory: mp3-editor-app
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/release-build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Post build failure as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let combined = '';
+            for (const f of ['/tmp/debug-build.log', '/tmp/release-build.log']) {
+              try { combined += fs.readFileSync(f, 'utf8'); } catch(e) {}
+            }
+            const lines = combined.split('\n');
+            const errors = lines.filter(l =>
+              (l.includes('error:') || l.match(/^> (What went wrong|Caused by)/) ||
+               l.includes('FAILURE:') || l.includes('BUILD FAILED') ||
+               (l.startsWith('> ') && l.length > 3))
+              && !l.includes('[deprecation]')
+            ).slice(0, 100);
+            if (errors.length === 0) errors.push('(no error lines found — check full run log)');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### CI Build Failure\n\`\`\`\n${errors.join('\n')}\n\`\`\``
+            });
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
