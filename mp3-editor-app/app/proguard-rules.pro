@@ -1,3 +1,3 @@
--keep class com.mpatric.mp3agic.** { *; }
--dontwarn com.mpatric.mp3agic.**
+-keep class org.jaudiotagger.** { *; }
+-dontwarn org.jaudiotagger.**
 -keep class com.mp3editor.app.** { *; }
