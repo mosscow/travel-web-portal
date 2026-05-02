@@ -46,14 +46,14 @@ jobs:
         id: build_debug
         working-directory: mp3-editor-app
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/debug-build.log
+          ./gradlew assembleDebug --no-daemon --info 2>&1 | tee /tmp/debug-build.log
           exit ${PIPESTATUS[0]}
 
       - name: Build Release APK (signed with debug key)
         id: build_release
         working-directory: mp3-editor-app
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/release-build.log
+          ./gradlew assembleRelease --no-daemon --info 2>&1 | tee /tmp/release-build.log
           exit ${PIPESTATUS[0]}
 
       - name: Report build failure
@@ -64,10 +64,10 @@ jobs:
           [ -f /tmp/release-build.log ] && LOG="${LOG} /tmp/release-build.log"
           echo "### Build Failure" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          cat $LOG 2>/dev/null | grep -E "^(e:|error:|FAILURE:|BUILD FAILED|> |\* What|Caused by|Exception)" | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
+          grep -hiE "(error:|e: |FAILURE:|BUILD FAILED|Could not resolve|> Task|Caused by:|Unresolved reference|No such property|Unresolved:)" $LOG 2>/dev/null | head -80 >> "$GITHUB_STEP_SUMMARY" || echo "No matching error lines found" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "--- Full tail of build log ---"
-          cat $LOG 2>/dev/null | tail -150
+          echo "--- Full tail of build log (last 200 lines) ---"
+          cat $LOG 2>/dev/null | tail -200
 
       - name: Upload build logs on failure
         if: failure()

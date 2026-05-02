@@ -123,7 +123,11 @@ object Mp3Utils {
     fun saveTags(filePath: String, tags: TagData): Boolean {
         return try {
             val audioFile = AudioFileIO.read(File(filePath))
-            val tag = audioFile.tagOrCreateDefault
+            val tag = audioFile.tag ?: run {
+                val newTag = audioFile.createDefaultTag()
+                audioFile.setTag(newTag)
+                newTag
+            }
 
             safeSetField(tag, FieldKey.TITLE, tags.title)
             safeSetField(tag, FieldKey.ARTIST, tags.artist)
