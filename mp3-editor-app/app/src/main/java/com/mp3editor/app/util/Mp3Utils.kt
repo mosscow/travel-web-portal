@@ -5,17 +5,16 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
-import android.net.Uri
 import android.os.Environment
+import com.mpatric.mp3agic.AbstractID3v2Tag
 import com.mpatric.mp3agic.ID3v1Tag
-import com.mpatric.mp3agic.ID3v2Tag
+import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File as AgicMp3File
 import com.mp3editor.app.data.Mp3File
 import com.mp3editor.app.data.TagData
 import java.io.File
 import java.nio.ByteBuffer
 import java.util.Locale
-import kotlin.math.min
 
 object Mp3Utils {
 
@@ -127,7 +126,7 @@ object Mp3Utils {
     fun saveTags(filePath: String, tags: TagData): Boolean {
         return try {
             val mp3 = AgicMp3File(filePath)
-            val tag: ID3v2Tag = if (mp3.hasId3v2Tag()) mp3.id3v2Tag else ID3v2Tag()
+            val tag: AbstractID3v2Tag = if (mp3.hasId3v2Tag()) mp3.id3v2Tag else ID3v24Tag()
 
             tag.title = tags.title.ifBlank { null }
             tag.artist = tags.artist.ifBlank { null }
@@ -136,9 +135,8 @@ object Mp3Utils {
             tag.track = tags.track.ifBlank { null }
             tag.year = tags.year.ifBlank { null }
             if (tags.genre.isNotBlank()) {
-                try { tag.genre = genreNameToId(tags.genre) } catch (e: Exception) {
-                    tag.genreDescription = tags.genre
-                }
+                val genreId = genreNameToId(tags.genre)
+                if (genreId != 255) tag.genre = genreId
             }
             tag.comment = tags.comment.ifBlank { null }
             tag.composer = tags.composer.ifBlank { null }
